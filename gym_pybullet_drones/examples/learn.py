@@ -14,7 +14,7 @@ The boolean argument --rllib switches between `stable-baselines3` and `ray[rllib
 This is a minimal working example integrating `gym-pybullet-drones` with 
 reinforcement learning libraries `stable-baselines3` and `ray[rllib]`.
 It is not meant as a good/effective learning example.
-
+hoveraviary.py
 """
 import time
 import argparse
@@ -31,7 +31,7 @@ from gym_pybullet_drones.utils.Logger import Logger
 from gym_pybullet_drones.envs.single_agent_rl.TakeoffAviary import TakeoffAviary
 from gym_pybullet_drones.utils.utils import sync, str2bool
 
-DEFAULT_RLLIB = False
+DEFAULT_RLLIB = True#False
 DEFAULT_GUI = True
 DEFAULT_RECORD_VIDEO = False
 DEFAULT_OUTPUT_FOLDER = 'results'
@@ -54,7 +54,8 @@ def run(rllib=DEFAULT_RLLIB,output_folder=DEFAULT_OUTPUT_FOLDER, gui=DEFAULT_GUI
                     env,
                     verbose=1
                     )
-        model.learn(total_timesteps=10000) # Typically not enough
+        model.learn(total_timesteps=10) # Typically not enough
+        print("cnmmmmmmmmmmmmmmmmmmmmmmm")
     else:
         ray.shutdown()
         ray.init(ignore_reinit_error=True)
@@ -73,6 +74,7 @@ def run(rllib=DEFAULT_RLLIB,output_folder=DEFAULT_OUTPUT_FOLDER, gui=DEFAULT_GUI
                                                                                    )
                   )
         policy = agent.get_policy()
+        print("gggggggggggggggggggggggggggggggg")
         ray.shutdown()
 
     #### Show (and record a video of) the model's performance ##
@@ -94,6 +96,7 @@ def run(rllib=DEFAULT_RLLIB,output_folder=DEFAULT_OUTPUT_FOLDER, gui=DEFAULT_GUI
         else:
             action, _states, _dict = policy.compute_single_action(obs)
         obs, reward, done, info = env.step(action)
+        print(reward)
         logger.log(drone=0,
                    timestamp=i/env.SIM_FREQ,
                    state=np.hstack([obs[0:3], np.zeros(4), obs[3:15],  np.resize(action, (4))]),

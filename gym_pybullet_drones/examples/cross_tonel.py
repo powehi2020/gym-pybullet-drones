@@ -14,6 +14,7 @@ The drones move along 2D trajectories in the X-Z plane, between x == +.5 and -.5
 import time
 import argparse
 import numpy as np
+import pybullet as p
 
 from gym_pybullet_drones.utils.utils import sync, str2bool
 from gym_pybullet_drones.utils.enums import DroneModel, Physics
@@ -44,7 +45,7 @@ def run(
         colab=DEFAULT_COLAB
     ):
     #### Initialize the simulation #############################
-    INIT_XYZS = np.array([[.5, 0, 1],[-.5, 0, .5]])
+    INIT_XYZS = np.array([[.7, 0, 1],[.7, 0, .5]])#飞机的初始位置
     AGGR_PHY_STEPS = int(simulation_freq_hz/control_freq_hz) if aggregate else 1
     env = CtrlAviary(drone_model=drone,
                      num_drones=2,
@@ -57,13 +58,15 @@ def run(
                      record=record_video,
                      obstacles=True
                      )
+    #### Obtain the PyBullet Client ID from the environment ####
+    PYB_CLIENT = env.getPyBulletClient()
 
     #### Initialize the trajectories ###########################
     PERIOD = 5
     NUM_WP = control_freq_hz*PERIOD
     TARGET_POS = np.zeros((NUM_WP, 2))
     for i in range(NUM_WP):
-        TARGET_POS[i, :] = [0.5*np.cos(2*np.pi*(i/NUM_WP)), 0]
+        TARGET_POS[i, :] = [np.cos(2*np.pi*(i/NUM_WP)), 0]
     wp_counters = np.array([0, int(NUM_WP/2)])
 
     #### Initialize the logger #################################
@@ -74,7 +77,26 @@ def run(
                     colab=colab
                     )
 
-    
+    #### Initialize the obstacle ####
+    """
+    p.loadURDF("urdf文件", xyz坐标, 欧拉角), 仿真环境的ID)
+    urdf文件:文件路径:/home/lkder/anaconda3/envs/drones/lib/python3.8/site-packages/pybullet_data
+    xyz坐标:[0,0,0]
+    欧拉角:p.getQuaternionFromEuler([0,0,0]
+    仿真环境的ID:physicsClientId=PYB_CLIENT
+    例子:p.loadURDF("sphere2.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)# 球
+        将sphere2,以[0,0,0]位置,p.getQuaternionFromEuler([0,0,0]角度,置于环境PYB_CLIENT中
+    """
+    # p.loadURDF("sphere2.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)# 球
+    # p.loadURDF("duck_vhacd.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#鸭子
+    # p.loadURDF("cube_no_rotation.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#正方体
+    # p.loadURDF("samurai.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#啥也没有！！
+    # p.loadURDF("soccerball.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#足球
+    # p.loadURDF("teddy_vhacd.urdf", [0,0,0], p.getQuaternionFromEuler([90,0,0]), physicsClientId=PYB_CLIENT)#小熊
+
+    p.loadURDF("cube_no_rotation.urdf", [0.7,-1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#正方体
+    p.loadURDF("cube_no_rotation.urdf", [0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#正方体
+    # p.loadURDF("sphere2red_nocol.urdf", [-0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#红色半圆
 
     #### Initialize the controllers ############################
     ctrl = [DSLPIDControl(drone_model=drone) for i in range(2)]
@@ -114,13 +136,14 @@ def run(
         #### Printout ##############################################
         if i%env.SIM_FREQ == 0:
             env.render()
+            # print(print(obs[str(1)]["state"]))
 
         #### Sync the simulation ###################################
         if gui:
             sync(i, START, env.TIMESTEP)
 
     #### Close the environment #################################
-    env.close()
+    # env.close()
 
     #### Save the simulation results ###########################
     logger.save()

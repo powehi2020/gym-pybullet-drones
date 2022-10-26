@@ -75,18 +75,6 @@ def run(
     INIT_RPYS = np.array([[0, 0,  i * (np.pi/2)/num_drones] for i in range(num_drones)])
     AGGR_PHY_STEPS = int(simulation_freq_hz/control_freq_hz) if aggregate else 1
 
- 
-
-
-
-
-
-
-
-
-
-
-
     #### Initialize a circular trajectory ######################
     PERIOD = 10
     NUM_WP = control_freq_hz*PERIOD
@@ -95,26 +83,6 @@ def run(
         TARGET_POS[i, :] = R*np.cos((i/NUM_WP)*(2*np.pi)+np.pi/2)+INIT_XYZS[0, 0], R*np.sin((i/NUM_WP)*(2*np.pi)+np.pi/2)-R+INIT_XYZS[0, 1], 0
     wp_counters = np.array([int((i*NUM_WP/6)%NUM_WP) for i in range(num_drones)])
 
-    #### Debug trajectory ######################################
-    #### Uncomment alt. target_pos in .computeControlFromState()
-    # INIT_XYZS = np.array([[.3 * i, 0, .1] for i in range(num_drones)])
-    # INIT_RPYS = np.array([[0, 0,  i * (np.pi/3)/num_drones] for i in range(num_drones)])
-    # NUM_WP = control_freq_hz*15
-    # TARGET_POS = np.zeros((NUM_WP,3))
-    # for i in range(NUM_WP):
-    #     if i < NUM_WP/6:
-    #         TARGET_POS[i, :] = (i*6)/NUM_WP, 0, 0.5*(i*6)/NUM_WP
-    #     elif i < 2 * NUM_WP/6:
-    #         TARGET_POS[i, :] = 1 - ((i-NUM_WP/6)*6)/NUM_WP, 0, 0.5 - 0.5*((i-NUM_WP/6)*6)/NUM_WP
-    #     elif i < 3 * NUM_WP/6:
-    #         TARGET_POS[i, :] = 0, ((i-2*NUM_WP/6)*6)/NUM_WP, 0.5*((i-2*NUM_WP/6)*6)/NUM_WP
-    #     elif i < 4 * NUM_WP/6:
-    #         TARGET_POS[i, :] = 0, 1 - ((i-3*NUM_WP/6)*6)/NUM_WP, 0.5 - 0.5*((i-3*NUM_WP/6)*6)/NUM_WP
-    #     elif i < 5 * NUM_WP/6:
-    #         TARGET_POS[i, :] = ((i-4*NUM_WP/6)*6)/NUM_WP, ((i-4*NUM_WP/6)*6)/NUM_WP, 0.5*((i-4*NUM_WP/6)*6)/NUM_WP
-    #     elif i < 6 * NUM_WP/6:
-    #         TARGET_POS[i, :] = 1 - ((i-5*NUM_WP/6)*6)/NUM_WP, 1 - ((i-5*NUM_WP/6)*6)/NUM_WP, 0.5 - 0.5*((i-5*NUM_WP/6)*6)/NUM_WP
-    # wp_counters = np.array([0 for i in range(num_drones)])
 
     #### Create the environment with or without video capture ##
     if vision: 
@@ -149,10 +117,29 @@ def run(
     PYB_CLIENT = env.getPyBulletClient()
 
     #### Initialize the obstacle ####
+    """
+    p.loadURDF("urdf文件", xyz坐标, 欧拉角), 仿真环境的ID)
+    urdf文件:文件路径:/home/lkder/anaconda3/envs/drones/lib/python3.8/site-packages/pybullet_data
+    xyz坐标:[0,0,0]
+    欧拉角:p.getQuaternionFromEuler([0,0,0]
+    仿真环境的ID:physicsClientId=PYB_CLIENT
+    例子:p.loadURDF("sphere2.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)# 球
+        将sphere2,以[0,0,0]位置,p.getQuaternionFromEuler([0,0,0]角度,置于环境PYB_CLIENT中
+    """
     # p.loadURDF("sphere2.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)# 球
     # p.loadURDF("duck_vhacd.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#鸭子
     # p.loadURDF("cube_no_rotation.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#正方体
     # p.loadURDF("samurai.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#啥也没有！！
+    # p.loadURDF("soccerball.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#足球
+    # p.loadURDF("teddy_vhacd.urdf", [0,0,0], p.getQuaternionFromEuler([90,0,0]), physicsClientId=PYB_CLIENT)#小熊
+
+    # p.loadURDF("cube_no_rotation.urdf", [-0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#正方体
+    # p.loadURDF("cube_no_rotation.urdf", [0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#正方体
+    p.loadURDF("sphere2red_nocol.urdf", [0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#正方体
+
+
+
+
     
    
     
@@ -180,6 +167,7 @@ def run(
 
         #### Step the simulation ###################################
         obs, reward, done, info = env.step(action)
+        
 
         #### Compute control at the desired frequency ##############
         if i%CTRL_EVERY_N_STEPS == 0:
@@ -209,6 +197,7 @@ def run(
         #### Printout ##############################################
         if i%env.SIM_FREQ == 0:
             env.render()
+            print(obs[str(1)]["state"])
             #### Print matrices with the images captured by each drone #
             if vision:
                 for j in range(num_drones):
@@ -216,13 +205,14 @@ def run(
                           obs[str(j)]["dep"].shape, np.average(obs[str(j)]["dep"]),
                           obs[str(j)]["seg"].shape, np.average(obs[str(j)]["seg"])
                           )
+                    
 
         #### Sync the simulation ###################################
         if gui:
             sync(i, START, env.TIMESTEP)
 
     #### Close the environment #################################
-    env.close()
+    # env.close()
 
     #### Save the simulation results ###########################
     logger.save()
@@ -232,29 +222,6 @@ def run(
     if plot:
         logger.plot()
 
-        """Add obstacles to the environment.
-
-        These obstacles are loaded from standard URDF files included in Bullet.
-
-        """
-        p.loadURDF("samurai.urdf",
-                   physicsClientId=PYB_CLIENT
-                   )
-        p.loadURDF("duck_vhacd.urdf",
-                   [-.5, -.5, .05],
-                   p.getQuaternionFromEuler([0, 0, 0]),
-                   physicsClientId=PYB_CLIENT
-                   )
-        p.loadURDF("cube_no_rotation.urdf",
-                   [-.5, -2.5, .5],
-                   p.getQuaternionFromEuler([0, 0, 0]),
-                   physicsClientId=PYB_CLIENT
-                   )
-        p.loadURDF("sphere2.urdf",
-                   [0, 2, .5],
-                   p.getQuaternionFromEuler([0,0,0]),
-                   physicsClientId=PYB_CLIENT
-                   )
 if __name__ == "__main__":
     
     #### Define and parse (optional) arguments for the script ##
