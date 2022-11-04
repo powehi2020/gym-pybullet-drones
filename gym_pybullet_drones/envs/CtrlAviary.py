@@ -82,8 +82,11 @@ class CtrlAviary(BaseAviary):
 
         """
         #### Action vector ######## P0            P1            P2            P3
-        act_lower_bound = np.array([0.,           0.,           0.,           0.])
-        act_upper_bound = np.array([self.MAX_RPM, self.MAX_RPM, self.MAX_RPM, self.MAX_RPM])
+        # act_lower_bound = np.array([0.,           0.,           0.,           0.])
+        # act_upper_bound = np.array([self.MAX_RPM, self.MAX_RPM, self.MAX_RPM, self.MAX_RPM])
+        act_lower_bound = np.array([0.])
+        act_upper_bound = np.array([8])
+        
         return spaces.Dict({str(i): spaces.Box(low=act_lower_bound,
                                                high=act_upper_bound,
                                                dtype=np.float32
@@ -168,7 +171,25 @@ class CtrlAviary(BaseAviary):
             Dummy value.
 
         """
-        return -1
+        
+        
+        """Computes the current reward value.
+
+        Returns
+        -------
+        float
+            The reward.
+
+        """
+        state = self._getDroneStateVector(0)
+        # return state[2]/10.  # Alternative reward space, see PR #32
+        # print("ggggggggggggggggggggggg")
+        print(state[2])
+        if state[2] < 0.02:
+            return -5
+        else:
+            return -1 / (10*state[2])
+       
 
     ################################################################################
     

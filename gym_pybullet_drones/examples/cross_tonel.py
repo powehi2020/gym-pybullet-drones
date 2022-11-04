@@ -15,6 +15,7 @@ import time
 import argparse
 import numpy as np
 import pybullet as p
+import random
 
 from gym_pybullet_drones.utils.utils import sync, str2bool
 from gym_pybullet_drones.utils.enums import DroneModel, Physics
@@ -45,7 +46,9 @@ def run(
         colab=DEFAULT_COLAB
     ):
     #### Initialize the simulation #############################
-    INIT_XYZS = np.array([[.7, 0, 1],[.7, 0, .5]])#飞机的初始位置
+    INIT_XYZS = np.array([[0, 0, random.uniform(.7,1)],[0, 0, random.uniform(.2,.6)]])#飞机的初始位置x，y，z
+
+
     AGGR_PHY_STEPS = int(simulation_freq_hz/control_freq_hz) if aggregate else 1
     env = CtrlAviary(drone_model=drone,
                      num_drones=2,
@@ -60,6 +63,9 @@ def run(
                      )
     #### Obtain the PyBullet Client ID from the environment ####
     PYB_CLIENT = env.getPyBulletClient()
+    
+    
+    
 
     #### Initialize the trajectories ###########################
     PERIOD = 5
@@ -100,16 +106,23 @@ def run(
 
     #### Initialize the controllers ############################
     ctrl = [DSLPIDControl(drone_model=drone) for i in range(2)]
+    
+    
+    
 
     #### Run the simulation ####################################
     CTRL_EVERY_N_STEPS = int(np.floor(env.SIM_FREQ/control_freq_hz))
     action = {str(i): np.array([0, 0, 0, 0]) for i in range(2)}
+    
     START = time.time()
     for i in range(0, int(duration_sec*env.SIM_FREQ), AGGR_PHY_STEPS):
+        
 
         #### Step the simulation ###################################
         obs, reward, done, info = env.step(action)
-        print(reward)
+        print("aaaaaaaaaaaaaaaaaaaaaaaaaa")
+        print(action)
+        print("aaaaaaaaaaaaaaaaaaa")
 
         #### Compute control at the desired frequency ##############
         if i%CTRL_EVERY_N_STEPS == 0:

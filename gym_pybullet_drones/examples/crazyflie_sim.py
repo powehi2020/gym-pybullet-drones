@@ -197,7 +197,7 @@ def run(
         #### Printout ##############################################
         if i%env.SIM_FREQ == 0:
             env.render()
-            print(obs[str(1)]["state"])
+            
             #### Print matrices with the images captured by each drone #
             if vision:
                 for j in range(num_drones):

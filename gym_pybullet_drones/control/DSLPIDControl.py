@@ -187,6 +187,7 @@ class DSLPIDControl(BaseControl):
                         + np.multiply(self.D_COEFF_FOR, vel_e) + np.array([0, 0, self.GRAVITY])
         scalar_thrust = max(0., np.dot(target_thrust, cur_rotation[:,2]))
         thrust = (math.sqrt(scalar_thrust / (4*self.KF)) - self.PWM2RPM_CONST) / self.PWM2RPM_SCALE
+        # print(thrust,"thrust099")
         target_z_ax = target_thrust / np.linalg.norm(target_thrust)
         target_x_c = np.array([math.cos(target_rpy[2]), math.sin(target_rpy[2]), 0])
         target_y_ax = np.cross(target_z_ax, target_x_c) / np.linalg.norm(np.cross(target_z_ax, target_x_c))

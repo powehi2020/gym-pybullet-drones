@@ -22,14 +22,16 @@ import gym
 import numpy as np
 # from stable_baselines3 import A2C
 # from stable_baselines3.a2c import MlpPolicy
-
 from stable_baselines3.common.env_checker import check_env
 import ray
 from ray.tune import register_env
 from ray.rllib.agents import ppo
 
 from gym_pybullet_drones.utils.Logger import Logger
-from gym_pybullet_drones.envs.single_agent_rl.TakeoffAviary import TakeoffAviary
+# from gym_pybullet_drones.envs.single_agent_rl.TakeoffAviary import TakeoffAviary
+
+from gym_pybullet_drones.examples.cross_tonel import crosstonel
+
 from gym_pybullet_drones.utils.utils import sync, str2bool
 
 DEFAULT_RLLIB = True#False
@@ -41,7 +43,7 @@ DEFAULT_COLAB = False
 def run(rllib=DEFAULT_RLLIB,output_folder=DEFAULT_OUTPUT_FOLDER, gui=DEFAULT_GUI, plot=True, colab=DEFAULT_COLAB, record_video=DEFAULT_RECORD_VIDEO):
 
     #### Check the environment's spaces ########################
-    env = gym.make("takeoff-aviary-v0")
+    env = gym.make("cross_tonel")
     print("[INFO] Action space:", env.action_space)
     print("[INFO] Observation space:", env.observation_space)
     check_env(env,
@@ -50,38 +52,27 @@ def run(rllib=DEFAULT_RLLIB,output_folder=DEFAULT_OUTPUT_FOLDER, gui=DEFAULT_GUI
               )
 
     #### Train the model #######################################
-    if not rllib:
-        model = A2C(MlpPolicy,
-                    env,
-                    verbose=1
-                    )
-        model.learn(total_timesteps=10000) # Typically not enough
-        print("cnmmmmmmmmmmmmmmmmmmmmmmm")
-    else:
-        ray.shutdown()
-        ray.init(ignore_reinit_error=True)
-        register_env("takeoff-aviary-v0", lambda _: TakeoffAviary())
-        config = ppo.DEFAULT_CONFIG.copy()
-        config["num_workers"] = 2
-        config["framework"] = "torch"
-        config["env"] = "takeoff-aviary-v0"
-        agent = ppo.PPOTrainer(config)
-        for i in range(3): # Typically not enough
-            results = agent.train()
-            print("[INFO] {:d}: episode_reward max {:f} min {:f} mean {:f}".format(i,
-                                                                                   results["episode_reward_max"],
-                                                                                   results["episode_reward_min"],
-                                                                                   results["episode_reward_mean"]
-                                                                                   )
-                  )
-        policy = agent.get_policy()
-        print("gggggggggggggggggggggggggggggggg")
-        ray.shutdown()
+    ray.shutdown()
+    ray.init(ignore_reinit_error=True)
+    register_env("takeoff-aviary-v0", lambda _: crosstonel())
+    config = ppo.DEFAULT_CONFIG.copy()
+    config["num_workers"] = 2
+    config["framework"] = "torch"
+    config["env"] = "cross_tonel"
+    agent = ppo.PPOTrainer(config)
+    for i in range(3): # Typically not enough
+        results = agent.train()
+        print("[INFO] {:d}: episode_reward max {:f} min {:f} mean {:f}".format(i,
+                                                                                results["episode_reward_max"],
+                                                                                results["episode_reward_min"],
+                                                                                results["episode_reward_mean"]
+                                                                                )
+                )
+    policy = agent.get_policy()
+
 
     #### Show (and record a video of) the model's performance ##
-    env = TakeoffAviary(gui=gui,
-                        record=record_video
-                        )
+    env = crosstonel( )
     logger = Logger(logging_freq_hz=int(env.SIM_FREQ/env.AGGR_PHY_STEPS),
                     num_drones=1,
                     output_folder=output_folder,
