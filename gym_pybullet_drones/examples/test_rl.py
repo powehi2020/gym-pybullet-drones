@@ -4,6 +4,7 @@ from stable_baselines3.common.env_checker import check_env
 from gym_pybullet_drones.examples.cross_rl import crosstonel
 from stable_baselines3 import A2C
 import numpy as np
+import pybullet as p
 
 
 class MySim(gym.Env):
@@ -39,8 +40,9 @@ class MySim(gym.Env):
         return state, reward, done, info
     
     def reset(self):
-        state = 0
-        return state
+        p.resetSimulation(physicsClientId=self._physics_client_id)
+        crosstonel()
+        return self.__get_observation()
     
     def render(self, mode='human'):
         pass
@@ -48,6 +50,10 @@ class MySim(gym.Env):
     def seed(self, seed=None):
         pass
     
+    def close(self):
+        if self._physics_client_id >= 0:
+            p.disconnect()
+        self._physics_client_id = -1
     
 if __name__ == "__main__":
     # from stable_baselines import PPO2

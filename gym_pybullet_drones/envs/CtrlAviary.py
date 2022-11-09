@@ -184,7 +184,7 @@ class CtrlAviary(BaseAviary):
         state = self._getDroneStateVector(0)
         # return state[2]/10.  # Alternative reward space, see PR #32
         # print("ggggggggggggggggggggggg")
-        print(state[2])
+        # print(state[2])
         if state[2] < 0.02:
             return -5
         else:
