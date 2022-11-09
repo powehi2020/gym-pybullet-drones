@@ -16,6 +16,8 @@ import argparse
 import numpy as np
 import pybullet as p
 import random
+import gym
+from gym import spaces
 
 from gym_pybullet_drones.utils.utils import sync, str2bool
 from gym_pybullet_drones.utils.enums import DroneModel, Physics
