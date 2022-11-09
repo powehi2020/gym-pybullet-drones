@@ -35,9 +35,9 @@ DEFAULT_DURATION_SEC = 12
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
 
-class crosstonel(CtrlAviary):
+class crosstonel():
     
-    def __init__(self, render : bool = False):
+    def __init__(self, render : bool = False ):
         self._render = render
         # 定义动作空间
         self.action_space = spaces.Box(
@@ -45,44 +45,21 @@ class crosstonel(CtrlAviary):
             high=np.array([10.]),
             dtype=np.float32
             )
-        
-        
         # self.PYB_CLIENT = p.connect(p.GUI if self._render else p.DIRECT)
 
         # 定义状态空间
-        # self.observation_space = spaces.Box(
-        #     low=np.array([0., 0.]),
-        #     high=np.array([100., np.pi])
-        # )
-        
-        
         obs_lower_bound = np.array([-np.inf, -np.inf, 0.,     -1., -1., -1., -1., -np.pi, -np.pi, -np.pi, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, 0.,           0.,           0.,           0.])
         obs_upper_bound = np.array([np.inf,  np.inf,  np.inf, 1.,  1.,  1.,  1.,  np.pi,  np.pi,  np.pi,  np.inf,  np.inf,  np.inf,  np.inf,  np.inf,  np.inf,  600000, 600000, 600000, 600000])
         self.observation_space  =  spaces.Box(low=obs_lower_bound,
                                             high=obs_upper_bound,
                                             dtype=np.float32
                                             )
-        # print(self.observation_space)
-        # self.observation_space = spaces.Box(np.hstack([self.pos[nth_drone, :], self.quat[nth_drone, :], self.rpy[nth_drone, :],
-        #                    self.vel[nth_drone, :], self.ang_v[nth_drone, :], self.last_clipped_action[nth_drone, :]]))
        
-        # 计数器
+              
         self.step_num = 0
         
         
-        # self.PYB_CLIENT = p.connect(p.GUI) # p.connect(p.GUI, options="--opengl2")
-        # for i in [p.COV_ENABLE_RGB_BUFFER_PREVIEW, p.COV_ENABLE_DEPTH_BUFFER_PREVIEW, p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW]:
-        #     p.configureDebugVisualizer(i, 0, physicsClientId=self.PYB_CLIENT)
-        # p.resetDebugVisualizerCamera(cameraDistance=3,
-        #                                 cameraYaw=-30,
-        #                                 cameraPitch=-30,
-        #                                 cameraTargetPosition=[0, 0, 0],
-        #                                 physicsClientId=self.PYB_CLIENT
-        #                                 )
-        # ret = p.getDebugVisualizerCamera(physicsClientId=self.PYB_CLIENT)
-        # print("viewMatrix", ret[2])
-        # print("projectionMatrix", ret[3])
-
+    
     def apply_action(self,
             drone=DEFAULT_DRONE, 
             gui=DEFAULT_GUI, 
@@ -243,7 +220,6 @@ class crosstonel(CtrlAviary):
     
     def step(self, act):
         self.act=act
-        print('aaaaaaaaaaaaaaaaaaaaaa',self.act)
         self.apply_action(act=self.act)
 
         

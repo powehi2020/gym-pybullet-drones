@@ -16,6 +16,8 @@ import argparse
 import numpy as np
 import pybullet as p
 import random
+from gym import spaces
+import gym
 
 from gym_pybullet_drones.utils.utils import sync, str2bool
 from gym_pybullet_drones.utils.enums import DroneModel, Physics
@@ -33,152 +35,216 @@ DEFAULT_DURATION_SEC = 12
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
 
-def run(
-        drone=DEFAULT_DRONE, 
-        gui=DEFAULT_GUI, 
-        record_video=DEFAULT_RECORD_VIDEO, 
-        simulation_freq_hz=DEFAULT_SIMULATION_FREQ_HZ, 
-        control_freq_hz=DEFAULT_CONTROL_FREQ_HZ, 
-        aggregate=DEFAULT_AGGREGATE, 
-        duration_sec=DEFAULT_DURATION_SEC,
-        output_folder=DEFAULT_OUTPUT_FOLDER,
-        plot=True,
-        colab=DEFAULT_COLAB
-    ):
-    #### Initialize the simulation #############################
-    INIT_XYZS = np.array([[0, 0, random.uniform(.7,1)],[0, 0, random.uniform(.2,.6)]])#飞机的初始位置x，y，z
 
-
-    AGGR_PHY_STEPS = int(simulation_freq_hz/control_freq_hz) if aggregate else 1
-    env = CtrlAviary(drone_model=drone,
-                     num_drones=2,
-                     initial_xyzs=INIT_XYZS,
-                     physics=Physics.PYB_DW,
-                     neighbourhood_radius=10,
-                     freq=simulation_freq_hz,
-                     aggregate_phy_steps=AGGR_PHY_STEPS,
-                     gui=gui,
-                     record=record_video,
-                     obstacles=True
-                     )
-    #### Obtain the PyBullet Client ID from the environment ####
-    PYB_CLIENT = env.getPyBulletClient()
+class rl (CtrlAviary,gym.Env):
     
     
+    def __init__(self,render : bool = False):
+        self._render = render
+        # 定义动作空间
+        self.action_space = spaces.Box(
+            low=np.array([-10.]),
+            high=np.array([10.]),
+            dtype=np.float32
+            )
+        # self.PYB_CLIENT = p.connect(p.GUI if self._render else p.DIRECT)
+
+        # 定义状态空间
+        obs_lower_bound = np.array([-np.inf, -np.inf, 0.,     -1., -1., -1., -1., -np.pi, -np.pi, -np.pi, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, 0.,           0.,           0.,           0.])
+        obs_upper_bound = np.array([np.inf,  np.inf,  np.inf, 1.,  1.,  1.,  1.,  np.pi,  np.pi,  np.pi,  np.inf,  np.inf,  np.inf,  np.inf,  np.inf,  np.inf,  600000, 600000, 600000, 600000])
+        self.observation_space  =  spaces.Box(low=obs_lower_bound,
+                                            high=obs_upper_bound,
+                                            dtype=np.float32
+                                            )
+       
+             
+        self.step_num = 0
+        
+        
+        
+        
+        
     
+    def run(self,
+            drone=DEFAULT_DRONE, 
+            gui=DEFAULT_GUI, 
+            record_video=DEFAULT_RECORD_VIDEO, 
+            simulation_freq_hz=DEFAULT_SIMULATION_FREQ_HZ, 
+            control_freq_hz=DEFAULT_CONTROL_FREQ_HZ, 
+            aggregate=DEFAULT_AGGREGATE, 
+            duration_sec=DEFAULT_DURATION_SEC,
+            output_folder=DEFAULT_OUTPUT_FOLDER,
+            plot=True,
+            colab=DEFAULT_COLAB
+        ):
+        #### Initialize the simulation #############################
+        self.INIT_XYZS = np.array([[0, 0, random.uniform(.7,1)],[0, 0, random.uniform(.2,.6)]])#飞机的初始位置x，y，z
 
-    #### Initialize the trajectories ###########################
-    PERIOD = 5
-    NUM_WP = control_freq_hz*PERIOD
-    TARGET_POS = np.zeros((NUM_WP, 2))
-    for i in range(NUM_WP):
-        TARGET_POS[i, :] = [np.cos(2*np.pi*(i/NUM_WP)), 0]
-    wp_counters = np.array([0, int(NUM_WP/2)])
 
-    #### Initialize the logger #################################
-    logger = Logger(logging_freq_hz=int(simulation_freq_hz/AGGR_PHY_STEPS),
-                    num_drones=2,
-                    duration_sec=duration_sec,
-                    output_folder=output_folder,
-                    colab=colab
-                    )
-
-    #### Initialize the obstacle ####
-    """
-    p.loadURDF("urdf文件", xyz坐标, 欧拉角), 仿真环境的ID)
-    urdf文件:文件路径:/home/lkder/anaconda3/envs/drones/lib/python3.8/site-packages/pybullet_data
-    xyz坐标:[0,0,0]
-    欧拉角:p.getQuaternionFromEuler([0,0,0]
-    仿真环境的ID:physicsClientId=PYB_CLIENT
-    例子:p.loadURDF("sphere2.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)# 球
-        将sphere2,以[0,0,0]位置,p.getQuaternionFromEuler([0,0,0]角度,置于环境PYB_CLIENT中
-    """
-    # p.loadURDF("sphere2.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)# 球
-    # p.loadURDF("duck_vhacd.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#鸭子
-    # p.loadURDF("cube_no_rotation.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#正方体
-    # p.loadURDF("samurai.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#啥也没有！！
-    # p.loadURDF("soccerball.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#足球
-    # p.loadURDF("teddy_vhacd.urdf", [0,0,0], p.getQuaternionFromEuler([90,0,0]), physicsClientId=PYB_CLIENT)#小熊
-
-    p.loadURDF("cube_no_rotation.urdf", [0.7,-1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#正方体
-    p.loadURDF("cube_no_rotation.urdf", [0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#正方体
-    # p.loadURDF("sphere2red_nocol.urdf", [-0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#红色半圆
-
-    #### Initialize the controllers ############################
-    ctrl = [DSLPIDControl(drone_model=drone) for i in range(2)]
-    
-    
-    
-
-    #### Run the simulation ####################################
-    CTRL_EVERY_N_STEPS = int(np.floor(env.SIM_FREQ/control_freq_hz))
-    action = {str(i): np.array([0, 0, 0, 0]) for i in range(2)}
-    
-    START = time.time()
-    for i in range(0, int(duration_sec*env.SIM_FREQ), AGGR_PHY_STEPS):
+        self.AGGR_PHY_STEPS  = int(simulation_freq_hz/control_freq_hz) if aggregate else 1
+        self.env = CtrlAviary(drone_model=drone,
+                        num_drones=2,
+                        initial_xyzs=self.INIT_XYZS,
+                        physics=Physics.PYB_DW,
+                        neighbourhood_radius=10,
+                        freq=simulation_freq_hz,
+                        aggregate_phy_steps=self.AGGR_PHY_STEPS ,
+                        gui=gui,
+                        record=record_video,
+                        obstacles=True
+                        )
+        #### Obtain the PyBullet Client ID from the environment ####
+        PYB_CLIENT = self.env.getPyBulletClient()
+        
+        
         
 
+        #### Initialize the trajectories ###########################
+        PERIOD = 5
+        self.NUM_WP = control_freq_hz*PERIOD
+        self.TARGET_POS = np.zeros((self.NUM_WP, 2))
+        for i in range(self.NUM_WP):
+            self.TARGET_POS[i, :] = [np.cos(2*np.pi*(i/self.NUM_WP)), 0]
+        self.wp_counters = np.array([0, int(self.NUM_WP/2)])
+
+        #### Initialize the logger #################################
+        self.logger = Logger(logging_freq_hz=int(simulation_freq_hz/self.AGGR_PHY_STEPS ),
+                        num_drones=2,
+                        duration_sec=duration_sec,
+                        output_folder=output_folder,
+                        colab=colab
+                        )
+
+        #### Initialize the obstacle ####
+        """
+        p.loadURDF("urdf文件", xyz坐标, 欧拉角), 仿真环境的ID)
+        urdf文件:文件路径:/home/lkder/anaconda3/envs/drones/lib/python3.8/site-packages/pybullet_data
+        xyz坐标:[0,0,0]
+        欧拉角:p.getQuaternionFromEuler([0,0,0]
+        仿真环境的ID:physicsClientId=PYB_CLIENT
+        例子:p.loadURDF("sphere2.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)# 球
+            将sphere2,以[0,0,0]位置,p.getQuaternionFromEuler([0,0,0]角度,置于环境PYB_CLIENT中
+        """
+        # p.loadURDF("sphere2.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)# 球
+        # p.loadURDF("duck_vhacd.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#鸭子
+        # p.loadURDF("cube_no_rotation.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#正方体
+        # p.loadURDF("samurai.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#啥也没有！！
+        # p.loadURDF("soccerball.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#足球
+        # p.loadURDF("teddy_vhacd.urdf", [0,0,0], p.getQuaternionFromEuler([90,0,0]), physicsClientId=PYB_CLIENT)#小熊
+
+        p.loadURDF("cube_no_rotation.urdf", [0.7,-1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#正方体
+        p.loadURDF("cube_no_rotation.urdf", [0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#正方体
+        # p.loadURDF("sphere2red_nocol.urdf", [-0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=PYB_CLIENT)#红色半圆
+    
+    
+    def ini (self):
+         #### Initialize the controllers ############################
+        self.ctrl = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(2)]
+        
+        
+        
+
+        #### Run the simulation ####################################
+        self.CTRL_EVERY_N_STEPS = int(np.floor(self.env.SIM_FREQ/48))
+        self.action = {str(i): np.array([0, 0, 0, 0]) for i in range(2)}
+        print('action',self.action)
+        
+        self.START = time.time()
+        
+    def step (self,act=None):
+
+        # #### Initialize the controllers ############################
+        # self.ctrl = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(2)]
+        
+        
+        
+
+        # #### Run the simulation ####################################
+        # self.CTRL_EVERY_N_STEPS = int(np.floor(self.env.SIM_FREQ/48))
+        # action = {str(i): np.array([0, 0, 0, 0]) for i in range(2)}
+        # print('action',action)
+        
+        # self.START = time.time()
+        # for i in range(0, int(12*self.env.SIM_FREQ), self.AGGR_PHY_STEPS ):
+            
+
         #### Step the simulation ###################################
-        obs, reward, done, info = env.step(action)
-        print("aaaaaaaaaaaaaaaaaaaaaaaaaa")
-        print(action)
-        print("aaaaaaaaaaaaaaaaaaa")
+        self.obs, reward, done, info = self.env.step(self.action)
+        self.state = np.array([self.obs['1']['state'][0],self.obs['1']['state'][1],self.obs['1']['state'][2],self.obs['1']['state'][3],self.obs['1']['state'][4],self.obs['1']['state'][5],self.obs['1']['state'][6],self.obs['1']['state'][7],self.obs['1']['state'][8],self.obs['1']['state'][9],self.obs['1']['state'][10],self.obs['1']['state'][11],self.obs['1']['state'][12],self.obs['1']['state'][13],self.obs['1']['state'][14],self.obs['1']['state'][15],self.obs['1']['state'][16],self.obs['1']['state'][17],self.obs['1']['state'][18],self.obs['1']['state'][19]])
+
+        # print("aaaaaaaaaaaaaaaaaaaaaaaaaa")
+        # print(action)
+        # print("aaaaaaaaaaaaaaaaaaa")
 
         #### Compute control at the desired frequency ##############
-        if i%CTRL_EVERY_N_STEPS == 0:
+        # if i%self.CTRL_EVERY_N_STEPS == 0:
+        
 
             #### Compute control for the current way point #############
-            for j in range(2):
-                action[str(j)], _, _ = ctrl[j].computeControlFromState(control_timestep=CTRL_EVERY_N_STEPS*env.TIMESTEP,
-                                                                       state=obs[str(j)]["state"],
-                                                                       target_pos=np.hstack([TARGET_POS[wp_counters[j], :], INIT_XYZS[j, 2]]),
-                                                                       )
-
-            #### Go to the next way point and loop #####################
-            for j in range(2):
-                wp_counters[j] = wp_counters[j] + 1 if wp_counters[j] < (NUM_WP-1) else 0
-
-        #### Log the simulation ####################################
         for j in range(2):
-            logger.log(drone=j,
-                       timestamp=i/env.SIM_FREQ,
-                       state=obs[str(j)]["state"],
-                       control=np.hstack([TARGET_POS[wp_counters[j], :], INIT_XYZS[j ,2], np.zeros(9)])
-                       )
+            self.action[str(j)], _, _ = self.ctrl[j].computeControlFromState(control_timestep=self.CTRL_EVERY_N_STEPS*self.env.TIMESTEP,
+                                                                state=self.obs[str(j)]["state"],
+                                                                target_pos=np.hstack([self.TARGET_POS[self.wp_counters[j], :], self.INIT_XYZS[j, 2]]),
+                                                                ude=act)
+            self.ctrl[j].print_ude()
+            print('act',act)
 
-        #### Printout ##############################################
-        if i%env.SIM_FREQ == 0:
-            env.render()
-            # print(print(obs[str(1)]["state"]))
+        #### Go to the next way point and loop #####################
+        for j in range(2):
+            self.wp_counters[j] = self.wp_counters[j] + 1 if self.wp_counters[j] < (self.NUM_WP-1) else 0
 
-        #### Sync the simulation ###################################
-        if gui:
-            sync(i, START, env.TIMESTEP)
+            # #### Log the simulation ####################################
+            # for j in range(2):
+            #     self.logger.log(drone=j,
+            #             timestamp=i/self.env.SIM_FREQ,
+            #             state=self.obs[str(j)]["state"],
+            #             control=np.hstack([self.TARGET_POS[self.wp_counters[j], :], self.INIT_XYZS[j ,2], np.zeros(9)])
+            #             )
+                
+        
 
-    #### Close the environment #################################
-    # env.close()
+            # #### Printout ##############################################
+            # if i%self.env.SIM_FREQ == 0:
+            #     self.env.render()
 
-    #### Save the simulation results ###########################
-    logger.save()
-    logger.save_as_csv("dw") # Optional CSV save
+            # #### Sync the simulation ###################################
+            # if True:
+            #     sync(i, self.START, self.env.TIMESTEP)
 
-    #### Plot the simulation results ###########################
-    if plot:
-        logger.plot()
+        #### Close the environment #################################
+        # self.env.close()
+
+        #### Save the simulation results ###########################
+        # logger.save()
+        # logger.save_as_csv("dw") # Optional CSV save
+
+        #### Plot the simulation results ###########################
+        # if True:
+        #     self.logger.plot()
+            
+        return self.state, reward, done, info
+            
+    def close (self):
+        self.env.close()
+        
+    def reset (self):
+        self.run()
+        self.step()
+        
+    def apply_act (self):
+        for i in range(0, 2880, 5 if  True else 1 ):
+            self.step(act=random.random())
+            
+        
 
 
 if __name__ == "__main__":
-    #### Define and parse (optional) arguments for the script ##
-    parser = argparse.ArgumentParser(description='Downwash example script using CtrlAviary and DSLPIDControl')
-    parser.add_argument('--drone',              default=DEFAULT_DRONE,     type=DroneModel,    help='Drone model (default: CF2X)', metavar='', choices=DroneModel)
-    parser.add_argument('--gui',                default=DEFAULT_GUI,       type=str2bool,      help='Whether to use PyBullet GUI (default: True)', metavar='')
-    parser.add_argument('--record_video',       default=DEFAULT_RECORD_VIDEO,      type=str2bool,      help='Whether to record a video (default: False)', metavar='')
-    parser.add_argument('--simulation_freq_hz', default=DEFAULT_SIMULATION_FREQ_HZ,        type=int,           help='Simulation frequency in Hz (default: 240)', metavar='')
-    parser.add_argument('--control_freq_hz',    default=DEFAULT_CONTROL_FREQ_HZ,         type=int,           help='Control frequency in Hz (default: 48)', metavar='')
-    parser.add_argument('--aggregate',          default=DEFAULT_AGGREGATE,       type=str2bool,      help='Whether to aggregate physics steps (default: False)', metavar='')
-    parser.add_argument('--duration_sec',       default=DEFAULT_DURATION_SEC,         type=int,           help='Duration of the simulation in seconds (default: 10)', metavar='')
-    parser.add_argument('--output_folder',     default=DEFAULT_OUTPUT_FOLDER, type=str,           help='Folder where to save logs (default: "results")', metavar='')
-    parser.add_argument('--colab',              default=DEFAULT_COLAB, type=bool,           help='Whether example is being run by a notebook (default: "False")', metavar='')
-    ARGS = parser.parse_args()
+   
 
-    run(**vars(ARGS))
+    run=rl()
+    run.run()
+    run.ini()
+    run.apply_act()
+    # for i in range(0, int(12*240), int(240/48) if  True else 1 ):
+    # for i in range(0, 2880, 5 if  True else 1 ):
+    #     run.step(act=random.random())   

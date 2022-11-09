@@ -1,9 +1,10 @@
-from gym_pybullet_drones.examples.cross_rl import crosstonel
+from gym_pybullet_drones.examples.cross_tonel import rl
 import pybullet as p
 import random
 
-env = crosstonel(render=True)
-env.reset()
+env = rl(render=True)
+
+# env.reset()
 for _ in range(5):
     
     
@@ -11,9 +12,12 @@ for _ in range(5):
         
         # p.setRealTimeSimulation(1)  
         print('11111111111111111111111111111')
+        run=rl()
+        run.run()
+        run.ini() 
         act = env.action_space.sample()
         print('随机动作采样',act)
-        obs, reward, done, _ = env.step(random.random())
+        obs, reward, done, _ = env.step(act=act)
         print("done:",done)
         if done:
             print("break")

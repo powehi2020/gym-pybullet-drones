@@ -2,6 +2,7 @@ import math
 import numpy as np
 import pybullet as p
 from scipy.spatial.transform import Rotation
+import random
 
 from gym_pybullet_drones.control.BaseControl import BaseControl
 from gym_pybullet_drones.utils.enums import DroneModel
@@ -19,7 +20,7 @@ class DSLPIDControl(BaseControl):
     def __init__(self,
                  drone_model: DroneModel,
                  g: float=9.8,
-                 ude_t = 999999999
+                 ude_t = 00
                  ):
         """Common control classes __init__ method.
 

@@ -58,7 +58,8 @@ class BaseControl(object):
                                 target_pos,
                                 target_rpy=np.zeros(3),
                                 target_vel=np.zeros(3),
-                                target_rpy_rates=np.zeros(3)
+                                target_rpy_rates=np.zeros(3),
+                                ude=None
                                 ):
         """Interface method using `computeControl`.
 
@@ -81,6 +82,8 @@ class BaseControl(object):
             (3,1)-shaped array of floats containing the desired roll, pitch, and yaw rates.
 
         """
+        self.ude=ude
+        
         return self.computeControl(control_timestep=control_timestep,
                                    cur_pos=state[0:3],
                                    cur_quat=state[3:7],
@@ -93,6 +96,8 @@ class BaseControl(object):
                                    )
 
     ################################################################################
+    def print_ude (self):
+        print('pid',self.ude)
 
     def computeControl(self,
                        control_timestep,

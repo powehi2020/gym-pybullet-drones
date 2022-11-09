@@ -87,17 +87,19 @@ def run(
 
         #### Step the simulation ###################################
         obs, reward, done, info = env.step(action)
-        print(reward)
+        # print(reward)
 
         #### Compute control at the desired frequency ##############
         if i%CTRL_EVERY_N_STEPS == 0:
 
             #### Compute control for the current way point #############
             for j in range(2):
+                
                 action[str(j)], _, _ = ctrl[j].computeControlFromState(control_timestep=CTRL_EVERY_N_STEPS*env.TIMESTEP,
                                                                        state=obs[str(j)]["state"],
                                                                        target_pos=np.hstack([TARGET_POS[wp_counters[j], :], INIT_XYZS[j, 2]]),
                                                                        )
+                
 
             #### Go to the next way point and loop #####################
             for j in range(2):
