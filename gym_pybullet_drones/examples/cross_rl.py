@@ -265,12 +265,12 @@ class rl (CtrlAviary,gym.Env):
         
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
     
-    from stable_baselines3.common.env_checker import check_env 
-    # 如果你安装了pytorch，则使用上面的，如果你安装了tensorflow，则使用from stable_baselines.common.env_checker import check_env
-    env = rl()
-    check_env(env)
+#     from stable_baselines3.common.env_checker import check_env 
+#     # 如果你安装了pytorch，则使用上面的，如果你安装了tensorflow，则使用from stable_baselines.common.env_checker import check_env
+#     env = rl()
+#     check_env(env)
     
     
     
