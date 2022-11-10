@@ -4,7 +4,7 @@ Example
 -------
 In a terminal, run as:
 
-    $ python cross_rl.py
+    $ python downwash.py
 
 Notes
 -----
@@ -16,8 +16,8 @@ import argparse
 import numpy as np
 import pybullet as p
 import random
-import gym
 from gym import spaces
+import gym
 
 from gym_pybullet_drones.utils.utils import sync, str2bool
 from gym_pybullet_drones.utils.enums import DroneModel, Physics
@@ -35,9 +35,44 @@ DEFAULT_DURATION_SEC = 12
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
 
-class crosstonel():
+
+class rl (CtrlAviary,gym.Env):
     
-    def __init__(self, render : bool = False ):
+    
+    # def __init__(self,render : bool = False):
+    #     self._render = render
+    #     # 定义动作空间
+    #     self.action_space = spaces.Box(
+    #         low=np.array([-10.]),
+    #         high=np.array([10.]),
+    #         dtype=np.float32
+    #         )
+    #     # self.self.PYB_CLIENT = p.connect(p.GUI if self._render else p.DIRECT)
+
+    #     # 定义状态空间
+    #     obs_lower_bound = np.array([-np.inf, -np.inf, 0.,     -1., -1., -1., -1., -np.pi, -np.pi, -np.pi, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, 0.,           0.,           0.,           0.])
+    #     obs_upper_bound = np.array([np.inf,  np.inf,  np.inf, 1.,  1.,  1.,  1.,  np.pi,  np.pi,  np.pi,  np.inf,  np.inf,  np.inf,  np.inf,  np.inf,  np.inf,  600000, 600000, 600000, 600000])
+    #     self.observation_space  =  spaces.Box(low=obs_lower_bound,
+    #                                         high=obs_upper_bound,
+    #                                         dtype=np.float32
+    #                                         )
+       
+             
+        
+        
+    def __init__(self,
+            drone=DEFAULT_DRONE, 
+            gui=True, 
+            record_video=DEFAULT_RECORD_VIDEO, 
+            simulation_freq_hz=DEFAULT_SIMULATION_FREQ_HZ, 
+            control_freq_hz=DEFAULT_CONTROL_FREQ_HZ, 
+            aggregate=DEFAULT_AGGREGATE, 
+            duration_sec=DEFAULT_DURATION_SEC,
+            output_folder=DEFAULT_OUTPUT_FOLDER,
+            plot=True,
+            colab=DEFAULT_COLAB,
+            render : bool = False
+        ):
         self._render = render
         # 定义动作空间
         self.action_space = spaces.Box(
@@ -45,7 +80,7 @@ class crosstonel():
             high=np.array([10.]),
             dtype=np.float32
             )
-        # self.PYB_CLIENT = p.connect(p.GUI if self._render else p.DIRECT)
+        # self.self.PYB_CLIENT = p.connect(p.GUI if self._render else p.DIRECT)
 
         # 定义状态空间
         obs_lower_bound = np.array([-np.inf, -np.inf, 0.,     -1., -1., -1., -1., -np.pi, -np.pi, -np.pi, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, 0.,           0.,           0.,           0.])
@@ -55,57 +90,41 @@ class crosstonel():
                                             dtype=np.float32
                                             )
        
-              
-        self.step_num = 0
-        
-        
-    
-    def apply_action(self,
-            drone=DEFAULT_DRONE, 
-            gui=DEFAULT_GUI, 
-            record_video=DEFAULT_RECORD_VIDEO, 
-            simulation_freq_hz=DEFAULT_SIMULATION_FREQ_HZ, 
-            control_freq_hz=DEFAULT_CONTROL_FREQ_HZ, 
-            aggregate=DEFAULT_AGGREGATE, 
-            duration_sec=DEFAULT_DURATION_SEC,
-            output_folder=DEFAULT_OUTPUT_FOLDER,
-            plot=True,
-            colab=DEFAULT_COLAB,
-            act=0
-        ):
-        #gui=DEFAULT_GUI
-        self.act = act
-        self.act = np.clip(self.act, -10., 10.)
-        print('apply_action',self.act)
         #### Initialize the simulation #############################
-        INIT_XYZS = np.array([[0, 0, random.uniform(.7,1)],[0, 0, random.uniform(.2,.6)]])#飞机的初始位置x，y，z
+        self.INIT_XYZS = np.array([[0, 0, random.uniform(.7,1)],[0, 0, random.uniform(.2,.6)]])#飞机的初始位置x，y，z
 
 
-        AGGR_PHY_STEPS = int(simulation_freq_hz/control_freq_hz) if aggregate else 1
+        self.AGGR_PHY_STEPS  = int(simulation_freq_hz/control_freq_hz) if aggregate else 1
         self.env = CtrlAviary(drone_model=drone,
                         num_drones=2,
-                        initial_xyzs=INIT_XYZS,
+                        initial_xyzs=self.INIT_XYZS,
                         physics=Physics.PYB_DW,
                         neighbourhood_radius=10,
                         freq=simulation_freq_hz,
-                        aggregate_phy_steps=AGGR_PHY_STEPS,
+                        aggregate_phy_steps=self.AGGR_PHY_STEPS ,
                         gui=gui,
                         record=record_video,
                         obstacles=True
                         )
-        #### Obtain the PyBullet Client ID from the environment ####
+        
+        self.step_num = 0
         self.PYB_CLIENT = self.env.getPyBulletClient()
+        #### Obtain the PyBullet Client ID from the environment ####
+        # self.PYB_CLIENT = self.env.getPyBulletClient()
+        
+        
+        
 
         #### Initialize the trajectories ###########################
         PERIOD = 5
-        NUM_WP = control_freq_hz*PERIOD
-        TARGET_POS = np.zeros((NUM_WP, 2))
-        for i in range(NUM_WP):
-            TARGET_POS[i, :] = [np.cos(2*np.pi*(i/NUM_WP)), 0]
-        wp_counters = np.array([0, int(NUM_WP/2)])
+        self.NUM_WP = control_freq_hz*PERIOD
+        self.TARGET_POS = np.zeros((self.NUM_WP, 2))
+        for i in range(self.NUM_WP):
+            self.TARGET_POS[i, :] = [np.cos(2*np.pi*(i/self.NUM_WP)), 0]
+        self.wp_counters = np.array([0, int(self.NUM_WP/2)])
 
         #### Initialize the logger #################################
-        logger = Logger(logging_freq_hz=int(simulation_freq_hz/AGGR_PHY_STEPS),
+        self.logger = Logger(logging_freq_hz=int(simulation_freq_hz/self.AGGR_PHY_STEPS ),
                         num_drones=2,
                         duration_sec=duration_sec,
                         output_folder=output_folder,
@@ -113,132 +132,158 @@ class crosstonel():
                         )
 
         #### Initialize the obstacle ####
-  
+        """
+        p.loadURDF("urdf文件", xyz坐标, 欧拉角), 仿真环境的ID)
+        urdf文件:文件路径:/home/lkder/anaconda3/envs/drones/lib/python3.8/site-packages/pybullet_data
+        xyz坐标:[0,0,0]
+        欧拉角:p.getQuaternionFromEuler([0,0,0]
+        仿真环境的ID:physicsClientId=self.PYB_CLIENT
+        例子:p.loadURDF("sphere2.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)# 球
+            将sphere2,以[0,0,0]位置,p.getQuaternionFromEuler([0,0,0]角度,置于环境self.PYB_CLIENT中
+        """
+        # p.loadURDF("sphere2.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)# 球
+        # p.loadURDF("duck_vhacd.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#鸭子
+        # p.loadURDF("cube_no_rotation.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#正方体
+        # p.loadURDF("samurai.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#啥也没有！！
+        # p.loadURDF("soccerball.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#足球
+        # p.loadURDF("teddy_vhacd.urdf", [0,0,0], p.getQuaternionFromEuler([90,0,0]), physicsClientId=self.PYB_CLIENT)#小熊
+
         p.loadURDF("cube_no_rotation.urdf", [0.7,-1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#正方体
         p.loadURDF("cube_no_rotation.urdf", [0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#正方体
-        
-        
-
+        # p.loadURDF("sphere2red_nocol.urdf", [-0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#红色半圆
         #### Initialize the controllers ############################
-        
-        ctrl = [DSLPIDControl(drone_model=drone,ude_t=self.act) for i in range(2)]
-        
-        
-        
+        self.ctrl = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(2)]
 
         #### Run the simulation ####################################
-        CTRL_EVERY_N_STEPS = int(np.floor(self.env.SIM_FREQ/control_freq_hz))
-        action = {str(i): np.array([0, 0, 0, 0]) for i in range(2)}
+        self.CTRL_EVERY_N_STEPS = int(np.floor(self.env.SIM_FREQ/48))
+        self.action = {str(i): np.array([0, 0, 0, 0]) for i in range(2)}
+        print('action',self.action)
         
-        START = time.time()
-        for i in range(0, int(duration_sec*self.env.SIM_FREQ), AGGR_PHY_STEPS):
+        self.START = time.time()
+    
+    
+    # def ini (self):
+         
+        
+    def step (self,act=None):
+
+        # #### Initialize the controllers ############################
+        # self.ctrl = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(2)]
+        
+        
+        
+
+        # #### Run the simulation ####################################
+        # self.CTRL_EVERY_N_STEPS = int(np.floor(self.env.SIM_FREQ/48))
+        # action = {str(i): np.array([0, 0, 0, 0]) for i in range(2)}
+        # print('action',action)
+        
+        # self.START = time.time()
+        # for i in range(0, int(12*self.env.SIM_FREQ), self.AGGR_PHY_STEPS ):
             
 
-            #### Step the simulation ###################################
-            self.obs, reward, done, info = self.env.step(action)
+        #### Step the simulation ###################################
+        self.obs, reward, done, info = self.env.step(self.action)
+        self.state = np.array([self.obs['1']['state'][0],self.obs['1']['state'][1],self.obs['1']['state'][2],self.obs['1']['state'][3],self.obs['1']['state'][4],self.obs['1']['state'][5],self.obs['1']['state'][6],self.obs['1']['state'][7],self.obs['1']['state'][8],self.obs['1']['state'][9],self.obs['1']['state'][10],self.obs['1']['state'][11],self.obs['1']['state'][12],self.obs['1']['state'][13],self.obs['1']['state'][14],self.obs['1']['state'][15],self.obs['1']['state'][16],self.obs['1']['state'][17],self.obs['1']['state'][18],self.obs['1']['state'][19]], dtype=np.float32)
 
-            self.obs['1']['state']=np.array([self.obs['1']['state'][0],self.obs['1']['state'][1],self.obs['1']['state'][2],self.obs['1']['state'][3],self.obs['1']['state'][4],self.obs['1']['state'][5],self.obs['1']['state'][6],self.obs['1']['state'][7],self.obs['1']['state'][8],self.obs['1']['state'][9],self.obs['1']['state'][10],self.obs['1']['state'][11],self.obs['1']['state'][12],self.obs['1']['state'][13],self.obs['1']['state'][14],self.obs['1']['state'][15],self.obs['1']['state'][16],self.obs['1']['state'][17],self.obs['1']['state'][18],self.obs['1']['state'][19]])
-         
+        # print("aaaaaaaaaaaaaaaaaaaaaaaaaa")
+        # print(action)
+        # print("aaaaaaaaaaaaaaaaaaa")
 
-            #### Compute control at the desired frequency ##############
-            if i%CTRL_EVERY_N_STEPS == 0:
+        #### Compute control at the desired frequency ##############
+        # if i%self.CTRL_EVERY_N_STEPS == 0:
+        
 
-                #### Compute control for the current way point #############
-                for j in range(2):
-                    action[str(j)], _, _ = ctrl[j].computeControlFromState(control_timestep=CTRL_EVERY_N_STEPS*self.env.TIMESTEP,
-                                                                        state=self.obs[str(j)]["state"],
-                                                                        target_pos=np.hstack([TARGET_POS[wp_counters[j], :], INIT_XYZS[j, 2]]),
-                                                                        )
+            #### Compute control for the current way point #############
+        for j in range(2):
+            self.action[str(j)], _, _ = self.ctrl[j].computeControlFromState(control_timestep=self.CTRL_EVERY_N_STEPS*self.env.TIMESTEP,
+                                                                state=self.obs[str(j)]["state"],
+                                                                target_pos=np.hstack([self.TARGET_POS[self.wp_counters[j], :], self.INIT_XYZS[j, 2]]),
+                                                                ude=act)
+            self.ctrl[j].print_ude()
+            print('act',self.CTRL_EVERY_N_STEPS*self.env.TIMESTEP)
 
-                #### Go to the next way point and loop #####################
-                for j in range(2):
-                    wp_counters[j] = wp_counters[j] + 1 if wp_counters[j] < (NUM_WP-1) else 0
+        #### Go to the next way point and loop #####################
+        for j in range(2):
+            self.wp_counters[j] = self.wp_counters[j] + 1 if self.wp_counters[j] < (self.NUM_WP-1) else 0
 
-            #### Log the simulation ####################################
-            for j in range(2):
-                logger.log(drone=j,
-                        timestamp=i/self.env.SIM_FREQ,
-                        state=self.obs[str(j)]["state"],
-                        control=np.hstack([TARGET_POS[wp_counters[j], :], INIT_XYZS[j ,2], np.zeros(9)])
-                        )
+            # #### Log the simulation ####################################
+        # for j in range(2):
+        #     self.logger.log(drone=j,
+        #             timestamp=1/self.env.SIM_FREQ,
+        #             state=self.obs[str(j)]["state"],
+        #             control=np.hstack([self.TARGET_POS[self.wp_counters[j], :], self.INIT_XYZS[j ,2], np.zeros(9)])
+        #             )
+                
+        
 
-            #### Printout ##############################################
+            # #### Printout ##############################################
             # if i%self.env.SIM_FREQ == 0:
             #     self.env.render()
-                # print(print(obs[str(1)]["state"]))
 
-            #### Sync the simulation ###################################
-            # if gui:
-            #     sync(i, START, self.env.TIMESTEP)
-                
-                
-        # print("dnikmn")        
-        # self.reset=self.env.reset()
+            # #### Sync the simulation ###################################
+            if True:
+                sync(j, self.START, self.env.TIMESTEP)
+                print('时间',self.START)
 
         #### Close the environment #################################
-        self.env.close()
-        
+        # self.env.close()
 
         #### Save the simulation results ###########################
         # logger.save()
         # logger.save_as_csv("dw") # Optional CSV save
 
-        ### Plot the simulation results ###########################
-        # if plot :
-        #     logger.plot()
+        #### Plot the simulation results ###########################
+        # if True:
+        #     self.logger.plot()
             
-    def __get_observation(self):
-        
-        state=self.obs['1']['state']
-        print('uuuuuuuuuuuu',state)
+        return self.state, reward, done, info
+            
+    # def _observationSpace(self):
+    #     state = self.state
+    #     return state
        
-        return np.array(state, dtype=np.float32)
-    
-    
-    def reset(self):
-        self.apply_action(
-            drone=DEFAULT_DRONE, 
-            gui=False, 
-            record_video=DEFAULT_RECORD_VIDEO, 
-            simulation_freq_hz=DEFAULT_SIMULATION_FREQ_HZ, 
-            control_freq_hz=DEFAULT_CONTROL_FREQ_HZ, 
-            aggregate=DEFAULT_AGGREGATE, 
-            duration_sec=DEFAULT_DURATION_SEC,
-            output_folder=DEFAULT_OUTPUT_FOLDER,
-            plot=True,
-            colab=DEFAULT_COLAB,
-            act=0
-        )
-        # p.resetSimulation(physicsClientId=self.PYB_CLIENT)
-        # self.env._housekeeping()
-        # self.env._updateAndStoreKinematicInformation()
-        # self.env._startVideoRecording()
-        
-        
-        return self.__get_observation()
-    
-    
-    def step(self, act):
-        self.act=act
-        self.apply_action(act=self.act)
-
-        
-        
-        self.step_num += 1
-        state = self.__get_observation()
-        reward = random.random()
-        print('lllllllllllllllllll',self.step_num)
-        if  self.step_num > 5:
-            done = True
-        else:
-            done = False
-        info = {}
-        return state, reward, done, self.act
-        
     def close (self):
-        self.env.close()
+        p.disconnect(physicsClientId=self.PYB_CLIENT)
         
-    def render(self, mode='human'):
-        pass
+    def reset (self):
+        # p.resetSimulation(physicsClientId=self.PYB_CLIENT)
+        
 
+        state=np.array(20*[0.], dtype=np.float32)
+
+        return state
+        
+        
+    def apply_act (self):
+        for i in range(0, 2880, 5 if  True else 1 ):
+            self.step(act=random.random())
+            if True:
+                sync(1, self.START, self.env.TIMESTEP)
+                print('时间',self.START)
+            
+        
+
+
+if __name__ == "__main__":
     
+    from stable_baselines3.common.env_checker import check_env 
+    # 如果你安装了pytorch，则使用上面的，如果你安装了tensorflow，则使用from stable_baselines.common.env_checker import check_env
+    env = rl()
+    check_env(env)
+    
+    
+    
+#     run=rl()
+   
+#     for i in range(1000):
+        
+        
+        
+#         # run.run()
+#         # run.ini()
+#         run.step(act=random.random())
+#         # run.close()
+#         # for i in range(0, int(12*240), int(240/48) if  True else 1 ):
+#         # for i in range(0, 2880, 5 if  True else 1 ):
+#         #     run.step(act=random.random())   

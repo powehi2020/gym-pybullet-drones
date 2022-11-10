@@ -83,7 +83,8 @@ def run(
     CTRL_EVERY_N_STEPS = int(np.floor(env.SIM_FREQ/control_freq_hz))
     action = {str(i): np.array([0, 0, 0, 0]) for i in range(2)}
     START = time.time()
-    for i in range(0, int(duration_sec*env.SIM_FREQ), AGGR_PHY_STEPS):
+    # for i in range(0, int(duration_sec*env.SIM_FREQ), AGGR_PHY_STEPS):
+    for i in range(500):
 
         #### Step the simulation ###################################
         obs, reward, done, info = env.step(action)
