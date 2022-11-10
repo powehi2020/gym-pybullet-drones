@@ -7,6 +7,8 @@ import random
 from gym_pybullet_drones.control.BaseControl import BaseControl
 from gym_pybullet_drones.utils.enums import DroneModel
 
+
+
 class DSLPIDControl(BaseControl):
     """PID control class for Crazyflies.
 
@@ -20,7 +22,7 @@ class DSLPIDControl(BaseControl):
     def __init__(self,
                  drone_model: DroneModel,
                  g: float=9.8,
-                 ude_t = 00
+                 
                  ):
         """Common control classes __init__ method.
 
@@ -37,16 +39,18 @@ class DSLPIDControl(BaseControl):
             print("[ERROR] in DSLPIDControl.__init__(), DSLPIDControl requires DroneModel.CF2X or DroneModel.CF2P")
             exit()
         self.P_COEFF_FOR = np.array([.4, .4, 1.25])
-        self.I_COEFF_FOR = np.array([.05, .05, .05])
+        # self.I_COEFF_FOR = np.array([.05, .05, .05])
+        self.I_COEFF_FOR = np.array([0, 0, 0])
         self.D_COEFF_FOR = np.array([.2, .2, .5])
         self.P_COEFF_TOR = np.array([70000., 70000., 60000.])
-        self.I_COEFF_TOR = np.array([.0, .0, 500.])
+        # self.I_COEFF_TOR = np.array([.0, .0, 500.])
+        self.I_COEFF_TOR = np.array([.0, .0, 0])
         self.D_COEFF_TOR = np.array([20000., 20000., 12000.])
         self.PWM2RPM_SCALE = 0.2685
         self.PWM2RPM_CONST = 4070.3
         self.MIN_PWM = 20000
         self.MAX_PWM = 65535
-        self.ude_t=ude_t
+        
         
         
         
@@ -194,7 +198,7 @@ class DSLPIDControl(BaseControl):
                         + np.multiply(self.D_COEFF_FOR, vel_e) + np.array([0, 0, self.GRAVITY])
         scalar_thrust = max(0., np.dot(target_thrust, cur_rotation[:,2]))
         thrust = (math.sqrt(scalar_thrust / (4*self.KF)) - self.PWM2RPM_CONST) / self.PWM2RPM_SCALE
-        # print(thrust,"thrust099")
+        
         target_z_ax = target_thrust / np.linalg.norm(target_thrust)
         target_x_c = np.array([math.cos(target_rpy[2]), math.sin(target_rpy[2]), 0])
         target_y_ax = np.cross(target_z_ax, target_x_c) / np.linalg.norm(np.cross(target_z_ax, target_x_c))
@@ -206,9 +210,11 @@ class DSLPIDControl(BaseControl):
             print("\n[ERROR] ctrl it", self.control_counter, "in Control._dslPIDPositionControl(), values outside range [-pi,pi]")
             
             
-        # print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab")
-        print('ude参数',self.ude_t)
-        # print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+        print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab")
+        # ude = BaseControl()
+        ude_t = self.print_ude()
+        print('ude参数',ude_t)
+        print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
         
             
         return thrust, target_euler, pos_e

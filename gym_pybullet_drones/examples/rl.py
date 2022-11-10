@@ -18,6 +18,7 @@ for episode in range(1, episodes + 1):
     while not done:
         # env.render()                           # 渲染环境
         action = env.action_space.sample()     # 随机采样动作
+        print(action)
         n_state, reward, done, info = env.step(action)    # 和环境交互，得到下一个状态，奖励等信息
         score += reward                        # 计算分数
     print("Episode : {}, Score : {}".format(episode, score))

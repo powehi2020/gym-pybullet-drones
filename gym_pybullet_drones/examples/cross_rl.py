@@ -202,7 +202,7 @@ class rl (CtrlAviary,gym.Env):
                                                                 target_pos=np.hstack([self.TARGET_POS[self.wp_counters[j], :], self.INIT_XYZS[j, 2]]),
                                                                 ude=act)
             self.ctrl[j].print_ude()
-            print('act',self.wp_counters[0])
+            print('act',act)
             
             
 
