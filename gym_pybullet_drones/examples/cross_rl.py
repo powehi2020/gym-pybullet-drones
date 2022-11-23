@@ -38,26 +38,6 @@ DEFAULT_COLAB = False
 
 
 class rl (CtrlAviary,gym.Env):
-    
-    
-    # def __init__(self,render : bool = False):
-    #     self._render = render
-    #     # 定义动作空间
-    #     self.action_space = spaces.Box(
-    #         low=np.array([-10.]),
-    #         high=np.array([10.]),
-    #         dtype=np.float32
-    #         )
-    #     # self.self.PYB_CLIENT = p.connect(p.GUI if self._render else p.DIRECT)
-
-    #     # 定义状态空间
-    #     obs_lower_bound = np.array([-np.inf, -np.inf, 0.,     -1., -1., -1., -1., -np.pi, -np.pi, -np.pi, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, 0.,           0.,           0.,           0.])
-    #     obs_upper_bound = np.array([np.inf,  np.inf,  np.inf, 1.,  1.,  1.,  1.,  np.pi,  np.pi,  np.pi,  np.inf,  np.inf,  np.inf,  np.inf,  np.inf,  np.inf,  600000, 600000, 600000, 600000])
-    #     self.observation_space  =  spaces.Box(low=obs_lower_bound,
-    #                                         high=obs_upper_bound,
-    #                                         dtype=np.float32
-    #                                         )
-       
              
         
         
@@ -257,36 +237,48 @@ class rl (CtrlAviary,gym.Env):
 
         return state
         
-        
-    def apply_act (self):
-        for i in range(0, 2880, 5 if  True else 1 ):
-            self.step(act=random.random())
-            if True:
-                sync(1, self.START, self.env.TIMESTEP)
-                print('时间',self.START)
-            
+    
         
 
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
     
-#     from stable_baselines3.common.env_checker import check_env 
-#     # 如果你安装了pytorch，则使用上面的，如果你安装了tensorflow，则使用from stable_baselines.common.env_checker import check_env
-#     env = rl()
-#     check_env(env)
+
+    from stable_baselines3 import PPO
+    from stable_baselines3.common.env_util import make_vec_env
+
+    # Parallel environments
+    env = rl()
+    print('link start')
+
+    model = PPO("MlpPolicy", env, verbose=1)
+    model.learn(total_timesteps=25)
+    model.save("ppo_cartpole")
+
+    del model # remove to demonstrate saving and loading
+
+    model = PPO.load("ppo_cartpole")
+
+    obs = env.reset()
+    while True:
+        action, _states = model.predict(obs)
+        obs, rewards, dones, info = env.step(action)
+        # env.render()
     
     
     
-#     run=rl()
-   
-#     for i in range(1000):
-        
-        
-        
-#         # run.run()
-#         # run.ini()
-#         run.step(act=random.random())
-#         # run.close()
-#         # for i in range(0, int(12*240), int(240/48) if  True else 1 ):
-#         # for i in range(0, 2880, 5 if  True else 1 ):
-#         #     run.step(act=random.random())   
+    
+    # from stable_baselines3 import PPO2
+    # from stable_baselines3 import deepq
+    # env = rl()
+    
+    # model = deepq.DQN(policy="MlpPolicy", env=env)
+    # model.learn(total_timesteps=10000)
+
+    # obs = env.reset()
+    # # 验证十次
+    # for _ in range(10):
+    #     action, state = model.predict(observation=obs)
+    #     print(action)
+    #     obs, reward, done, info = env.step(action)
+    #     env.render()
