@@ -72,7 +72,7 @@ class rl (CtrlAviary,gym.Env):
                                             )
        
         #### Initialize the simulation #############################
-        self.INIT_XYZS = np.array([[0, 0, random.uniform(.7,1)],[0, 0, random.uniform(.2,.6)]])#飞机的初始位置x，y，z
+        self.INIT_XYZS = np.array([[0, 0, 0.6],[0, 0, 1]])#飞机的初始位置x，y，z
 
 
         self.AGGR_PHY_STEPS  = int(simulation_freq_hz/control_freq_hz) if aggregate else 1
