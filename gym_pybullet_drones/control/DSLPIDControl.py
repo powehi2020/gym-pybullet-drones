@@ -193,7 +193,9 @@ class DSLPIDControl(BaseControl):
 
         """
         cur_rotation = np.array(p.getMatrixFromQuaternion(cur_quat)).reshape(3, 3)
+        t_ude = self.print_ude()
 
+      
         
         k_p = [15,15,30]
         k_d = [12,12,10]
@@ -224,7 +226,7 @@ class DSLPIDControl(BaseControl):
         target_thrust = np.multiply(self.P_COEFF_FOR, pos_e) \
                         + np.multiply(self.I_COEFF_FOR, self.integral_pos_e) \
                         + np.multiply(self.D_COEFF_FOR, vel_e) + np.array([0, 0, self.GRAVITY]) \
-                        - 0.01*f_hat    
+                        - t_ude[0]*f_hat    
 
 
 

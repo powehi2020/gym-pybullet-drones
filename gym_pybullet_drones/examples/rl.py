@@ -50,7 +50,7 @@ for _ in range(1000):
         print('11111111111111111111111111111')
 
         
-        print('ss',x)
+        # print('ss',x)
         act = env.action_space.sample()
         print('随机动作采样',act)
         obs, reward, done, _ = env.step(act=act)

@@ -57,8 +57,8 @@ class rl (CtrlAviary,gym.Env):
         self._render = render
         # 定义动作空间
         self.action_space = spaces.Box(
-            low=np.array([-10.]),
-            high=np.array([10.]),
+            low=np.array([-0.1]),
+            high=np.array([1.]),
             dtype=np.float32
             )
         # self.self.PYB_CLIENT = p.connect(p.GUI if self._render else p.DIRECT)
@@ -181,8 +181,8 @@ class rl (CtrlAviary,gym.Env):
                                                                 state=self.obs[str(j)]["state"],
                                                                 target_pos=np.hstack([self.TARGET_POS[self.wp_counters[j], :], self.INIT_XYZS[j, 2]]),
                                                                 ude=act)
-            self.ctrl[j].print_ude()
-            print('act',act)
+            # self.ctrl[j].print_ude()
+            # print('act',act)
             
             
 

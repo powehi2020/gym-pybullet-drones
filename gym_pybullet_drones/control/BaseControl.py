@@ -97,7 +97,8 @@ class BaseControl(object):
 
     ################################################################################
     def print_ude (self):
-        print('pid',self.ude)
+        
+        
         return self.ude
 
     def computeControl(self,
