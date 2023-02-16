@@ -181,14 +181,14 @@ class CtrlAviary(BaseAviary):
             The reward.
 
         """
-        state = self._getDroneStateVector(0)
+        self.state = self._getDroneStateVector(0)
         # return state[2]/10.  # Alternative reward space, see PR #32
         # print("ggggggggggggggggggggggg")
         # print(state[2])
-        if state[2] < 0.02:
+        if self.state[2] < 0.02:
             return -5
         else:
-            return -1 / (10*state[2])
+            return -1 / (10*self.state[2])
        
 
     ################################################################################
@@ -204,7 +204,12 @@ class CtrlAviary(BaseAviary):
             Dummy value.
 
         """
-        return False
+        if self.state[2] > 0 :
+        	print("succeseful")
+        	return True
+        else:
+        	return False
+        
 
     ################################################################################
     

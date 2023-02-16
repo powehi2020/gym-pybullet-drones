@@ -29,9 +29,9 @@ class SimplePIDControl(BaseControl):
 
         """
         super().__init__(drone_model=drone_model, g=g)
-        if self.DRONE_MODEL != DroneModel.HB:
-            print("[ERROR] in SimplePIDControl.__init__(), SimplePIDControl requires DroneModel.HB")
-            exit()
+        # if self.DRONE_MODEL != DroneModel.HB:
+        #     print("[ERROR] in SimplePIDControl.__init__(), SimplePIDControl requires DroneModel.HB")
+        #     exit()
         self.P_COEFF_FOR = np.array([.1, .1, .2])
         self.I_COEFF_FOR = np.array([.0001, .0001, .0001])
         self.D_COEFF_FOR = np.array([.3, .3, .4])

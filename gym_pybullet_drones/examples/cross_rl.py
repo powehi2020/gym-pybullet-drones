@@ -24,9 +24,10 @@ from gym_pybullet_drones.utils.utils import sync, str2bool
 from gym_pybullet_drones.utils.enums import DroneModel, Physics
 from gym_pybullet_drones.envs.CtrlAviary import CtrlAviary
 from gym_pybullet_drones.control.DSLPIDControl import DSLPIDControl
+from gym_pybullet_drones.control.SimplePIDControl import SimplePIDControl
 from gym_pybullet_drones.utils.Logger import Logger
 
-DEFAULT_DRONE = DroneModel('cf2x')
+DEFAULT_DRONE = DroneModel("cf2x")
 DEFAULT_GUI = True
 DEFAULT_RECORD_VIDEO = False
 DEFAULT_SIMULATION_FREQ_HZ = 240
@@ -57,7 +58,7 @@ class rl (CtrlAviary,gym.Env):
         self._render = render
         # 定义动作空间
         self.action_space = spaces.Box(
-            low=np.array([-0.1]),
+            low=np.array([0.1]),
             high=np.array([1.]),
             dtype=np.float32
             )
@@ -72,7 +73,7 @@ class rl (CtrlAviary,gym.Env):
                                             )
        
         #### Initialize the simulation #############################
-        self.INIT_XYZS = np.array([[0, 0, 0.6],[0, 0, 1]])#飞机的初始位置x，y，z
+        self.INIT_XYZS = np.array([[1, 0, 0.6],[0, 0, 1]])#飞机的初始位置x，y，z
 
 
         self.AGGR_PHY_STEPS  = int(simulation_freq_hz/control_freq_hz) if aggregate else 1
@@ -132,8 +133,11 @@ class rl (CtrlAviary,gym.Env):
         p.loadURDF("cube_no_rotation.urdf", [0.7,-1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#正方体
         p.loadURDF("cube_no_rotation.urdf", [0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#正方体
         # p.loadURDF("sphere2red_nocol.urdf", [-0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#红色半圆
+        
         #### Initialize the controllers ############################
         self.ctrl = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(2)]
+
+        # self.ctrl = [SimplePIDControl(drone_model=DroneModel.HB) for i in range(2)]
 
         #### Run the simulation ####################################
         self.CTRL_EVERY_N_STEPS = int(np.floor(self.env.SIM_FREQ/48))
@@ -181,8 +185,7 @@ class rl (CtrlAviary,gym.Env):
                                                                 state=self.obs[str(j)]["state"],
                                                                 target_pos=np.hstack([self.TARGET_POS[self.wp_counters[j], :], self.INIT_XYZS[j, 2]]),
                                                                 ude=act)
-            # self.ctrl[j].print_ude()
-            # print('act',act)
+           
             
             
 
@@ -207,7 +210,7 @@ class rl (CtrlAviary,gym.Env):
             # #### Sync the simulation ###################################
             if True:
                 sync(j, self.START, self.env.TIMESTEP)
-                print('时间',self.START)
+                # print('时间',self.START)
 
         #### Close the environment #################################
         # self.env.close()
@@ -241,44 +244,44 @@ class rl (CtrlAviary,gym.Env):
         
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
     
 
-    from stable_baselines3 import PPO
-    from stable_baselines3.common.env_util import make_vec_env
+#     from stable_baselines3 import PPO
+#     from stable_baselines3.common.env_util import make_vec_env
 
-    # Parallel environments
-    env = rl()
-    print('link start')
+#     # Parallel environments
+#     env = rl()
+#     print('link start')
 
-    model = PPO("MlpPolicy", env, verbose=1)
-    model.learn(total_timesteps=25)
-    model.save("ppo_cartpole")
+#     model = PPO("MlpPolicy", env, verbose=1)
+#     model.learn(total_timesteps=25)
+#     model.save("ppo_cartpole")
 
-    del model # remove to demonstrate saving and loading
+#     del model # remove to demonstrate saving and loading
 
-    model = PPO.load("ppo_cartpole")
+#     model = PPO.load("ppo_cartpole")
 
-    obs = env.reset()
-    while True:
-        action, _states = model.predict(obs)
-        obs, rewards, dones, info = env.step(action)
-        # env.render()
+#     obs = env.reset()
+#     while True:
+#         action, _states = model.predict(obs)
+#         obs, rewards, dones, info = env.step(action)
+#         # env.render()
     
     
     
     
-    # from stable_baselines3 import PPO2
-    # from stable_baselines3 import deepq
-    # env = rl()
+#     # from stable_baselines3 import PPO2
+#     # from stable_baselines3 import deepq
+#     # env = rl()
     
-    # model = deepq.DQN(policy="MlpPolicy", env=env)
-    # model.learn(total_timesteps=10000)
+#     # model = deepq.DQN(policy="MlpPolicy", env=env)
+#     # model.learn(total_timesteps=10000)
 
-    # obs = env.reset()
-    # # 验证十次
-    # for _ in range(10):
-    #     action, state = model.predict(observation=obs)
-    #     print(action)
-    #     obs, reward, done, info = env.step(action)
-    #     env.render()
+#     # obs = env.reset()
+#     # # 验证十次
+#     # for _ in range(10):
+#     #     action, state = model.predict(observation=obs)
+#     #     print(action)
+#     #     obs, reward, done, info = env.step(action)
+#     #     env.render()

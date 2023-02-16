@@ -8,6 +8,7 @@ from gym_pybullet_drones.control.BaseControl import BaseControl
 from gym_pybullet_drones.utils.enums import DroneModel
 
 
+
 class DSLPIDControl(BaseControl):
     """PID control class for Crazyflies.
 
@@ -52,7 +53,6 @@ class DSLPIDControl(BaseControl):
         self.PWM2RPM_CONST = 4070.3
         self.MIN_PWM = 20000
         self.MAX_PWM = 65535
-        self.acc_00 = 0
         
         
         
@@ -193,14 +193,16 @@ class DSLPIDControl(BaseControl):
 
         """
         cur_rotation = np.array(p.getMatrixFromQuaternion(cur_quat)).reshape(3, 3)
-        k_p = [1,1,30]
-        k_d = [0,0,12]
-        # target_vel = np.array([0., 0., 0.])
+        t_ude = self.print_ude()
+        print(t_ude)
+
+      
+        
+        k_p = [15,15,30]
+        k_d = [12,12,10]
+
         pos_e = target_pos - cur_pos
         vel_e = target_vel - cur_vel
-        vel_e = np.clip(vel_e,-2,2)
-        # vel_e =  target_vel - (pos_e -self.integral_u) / control_timestep
-        # self.integral_u = pos_e
 
         
         
@@ -209,64 +211,71 @@ class DSLPIDControl(BaseControl):
         self.integral_pos_e[2] = np.clip(self.integral_pos_e[2], -0.15, .15)
 
         #### PID target thrust #####################################
-        # target_thrust = np.multiply(self.P_COEFF_FOR, pos_e) \
-        #                 + np.multiply(self.I_COEFF_FOR, self.integral_pos_e) \
-        #                 + np.multiply(self.D_COEFF_FOR, vel_e) + np.array([0, 0, self.GRAVITY])
+        target_thrust = np.multiply(self.P_COEFF_FOR, pos_e) \
+                        + np.multiply(self.I_COEFF_FOR, self.integral_pos_e) \
+                        + np.multiply(self.D_COEFF_FOR, vel_e) + np.array([0, 0, self.GRAVITY])
 
-        
-        
+
+        u = target_thrust - np.array([0, 0, self.GRAVITY])
+        self.integral_u = self.integral_u + u *0.001* control_timestep
+        f_hat = vel_e - self.integral_u
+        # f_hat = 0
         
 
-        # target_thrust = np.multiply(self.P_COEFF_FOR, pos_e) \
-        #                 + np.multiply(self.D_COEFF_FOR, vel_e) + np.array([0, 0, self.GRAVITY]) \
+        target_thrust = np.multiply(self.P_COEFF_FOR, pos_e) \
+                        + np.multiply(self.D_COEFF_FOR, vel_e) + np.array([0, 0, self.GRAVITY]) \
                         # -np.multiply(0.1*np.array([1, 1, 1]), f_hat) \
                         # + np.multiply(self.I_COEFF_FOR, self.integral_pos_e) \  
+        #print(target_thrust,np.multiply(t_ude[0]*np.array([1, 1, 1]), f_hat))                    
 
-        # T_ude = 0.5
-        # u = target_thrust[2] - self.GRAVITY
+
+
+        scalar_thrust = max(0., np.dot(target_thrust, cur_rotation[:,2]))
         
-        # f_hat =1.0/ T_ude*(cur_vel - self.integral_u)
-        # # f_hat = 0
-
-
-
-        # scalar_thrust = max(0., np.dot(target_thrust, cur_rotation[:,2]))
-        thrust1 = self.GRAVITY + self.GRAVITY/9.8*(k_d[2] * vel_e[2] +k_p[2] * pos_e[2]) - self.GRAVITY/9.8*(0)
-        thrust = (math.sqrt(thrust1 / (4*self.KF)) - self.PWM2RPM_CONST) / self.PWM2RPM_SCALE
+        thrust = (math.sqrt(scalar_thrust / (4*self.KF)) - self.PWM2RPM_CONST) / self.PWM2RPM_SCALE
         
-        # thrust = (math.sqrt(scalar_thrust / (4*self.KF)) - self.PWM2RPM_CONST) / self.PWM2RPM_SCALE
-        
+        target_z_ax = target_thrust / np.linalg.norm(target_thrust)
+
+        target_x_c = np.array([math.cos(target_rpy[2]), math.sin(target_rpy[2]), 0])
+
+        target_y_ax = np.cross(target_z_ax, target_x_c) / np.linalg.norm(np.cross(target_z_ax, target_x_c))
+        target_x_ax = np.cross(target_y_ax, target_z_ax)
 
 
-        # target_z_ax = target_thrust / np.linalg.norm(target_thrust)
-        # target_x_c = np.array([math.cos(target_rpy[2]), math.sin(target_rpy[2]), 0])
-        # target_y_ax = np.cross(target_z_ax, target_x_c) / np.linalg.norm(np.cross(target_z_ax, target_x_c))
-        # target_x_ax = np.cross(target_y_ax, target_z_ax)
-
-
-        # target_rotation = (np.vstack([target_x_ax, target_y_ax, target_z_ax])).transpose()#ranspose()无参数代表转置
+        target_rotation = (np.vstack([target_x_ax, target_y_ax, target_z_ax])).transpose()#ranspose()无参数代表转置
         #### Target rotation #######################################
-        # target_euler = (Rotation.from_matrix(target_rotation)).as_euler('XYZ', degrees=False)
+        target_euler = (Rotation.from_matrix(target_rotation)).as_euler('XYZ', degrees=False)
 
 
         #### small angle controller#################################
         f_theta = 0
         f_phi = 0
         f_z = 0
-       
-        acc_0 = k_p[0]*pos_e[0] + k_d[0]*vel_e[0] 
-        acc_1 = k_p[1]*pos_e[1] + k_d[1]*vel_e[1]
-       
-        with open('acc_0.txt','a')as f:
-            f.write(str(acc_0))
-            f.write('\n')
+        theta_des_dd = 1/self.GRAVITY/9.8*((k_p[0]*pos_e[0])+k_d[0]*vel_e[0]-f_theta)
+        theta_des_dd =theta_des_dd * math.pi/180
 
-        phi_des_dd = 1/9.8*(-acc_1)  
-        theta_des_dd = 1/9.8*(acc_0) 
+        phi_des_dd = 1/self.GRAVITY/9.8*(-((k_p[1]*pos_e[1])+k_d[1]*vel_e[1]-f_phi))
 
-        target_euler = np.array([phi_des_dd,theta_des_dd,0. ])
-        print("target_euler",target_euler)
-        print('pos',pos_e)
+        phi_des_dd =phi_des_dd * math.pi/180
+        # yaw_des_dd = 0
+
+        thrust1 = self.GRAVITY + self.GRAVITY/9.8*(k_d[2] * vel_e[2] +k_p[2] * pos_e[2])  
+         
+        
+        thrust1 = max(0.,thrust1)
+        # scalar_thrust = max(0., np.dot(thrust1, cur_rotation[:,2]))
+        # scalar_thrust = 
+        # thrust = (math.sqrt(thrust1 / (4*self.KF)) - self.PWM2RPM_CONST) / self.PWM2RPM_SCALE
+       
+
+        # print(thrust1,scalar_thrust)
+
+        # target_euler = np.array([theta_des_dd,phi_des_dd,0. ])
+
+        
+        # print(a)
+
+        #print("target_euler",target_euler)
         if np.any(np.abs(target_euler) > math.pi):
             print("\n[ERROR] ctrl it", self.control_counter, "in Control._dslPIDPositionControl(), values outside range [-pi,pi]")
             
@@ -306,17 +315,18 @@ class DSLPIDControl(BaseControl):
             (4,1)-shaped array of integers containing the RPMs to apply to each of the 4 motors.
 
         """
-        # cur_rotation = np.array(p.getMatrixFromQuaternion(cur_quat)).reshape(3, 3)
+        cur_rotation = np.array(p.getMatrixFromQuaternion(cur_quat)).reshape(3, 3)
         cur_rpy = np.array(p.getEulerFromQuaternion(cur_quat))
 
 
-        # target_quat = (Rotation.from_euler('XYZ', target_euler, degrees=False)).as_quat()
-        # w,x,y,z = target_quat
-        # target_rotation = (Rotation.from_quat([w, x, y, z])).as_matrix()
-        # rot_matrix_e = np.dot((target_rotation.transpose()),cur_rotation) - np.dot(cur_rotation.transpose(),target_rotation)
-        # rot_e = np.array([rot_matrix_e[2, 1], rot_matrix_e[0, 2], rot_matrix_e[1, 0]]) 
-        # rot_e = target_euler- cur_rpy
-        rot_e = target_euler- cur_rpy         
+        target_quat = (Rotation.from_euler('XYZ', target_euler, degrees=False)).as_quat()
+        w,x,y,z = target_quat
+        target_rotation = (Rotation.from_quat([w, x, y, z])).as_matrix()
+        rot_matrix_e = np.dot((target_rotation.transpose()),cur_rotation) - np.dot(cur_rotation.transpose(),target_rotation)
+        rot_e = np.array([rot_matrix_e[2, 1], rot_matrix_e[0, 2], rot_matrix_e[1, 0]]) 
+
+
+        # rot_e = target_euler- cur_rpy 
         rpy_rates_e = target_rpy_rates - (cur_rpy - self.last_rpy)/control_timestep
         self.last_rpy = cur_rpy
         self.integral_rpy_e = self.integral_rpy_e - rot_e*control_timestep
@@ -324,25 +334,16 @@ class DSLPIDControl(BaseControl):
         self.integral_rpy_e[0:2] = np.clip(self.integral_rpy_e[0:2], -1., 1.)
         
         
-        I = np.array([[1.43e-5,0,0],[0,1.43e-5,0],[0,0,2.89e-5]])
-        kp_m = np.array([3000,3000,3000])
-        kd_m = np.array([300,300,300])
+
 
 
 
         #### PID target torques ####################################
-        
-        # target_torques = - np.multiply(self.P_COEFF_TOR, rot_e) \
-        #                  + np.multiply(self.D_COEFF_TOR, rpy_rates_e) \
-        #                  + np.multiply(self.I_COEFF_TOR, self.integral_rpy_e)
-        target_torques = np.array([kp_m[0]*rot_e[0],kp_m[1]*rot_e[1],kp_m[2]*rot_e[2]])+\
-                            np.array([kd_m[0]*rpy_rates_e[0],kd_m[1]*rpy_rates_e[1],kd_m[2]*rpy_rates_e[2]])
-                  
-        # target_torques = np.dot(I,target_torques)
-        # print(target_torques,'target_torques')
+        # rot_e = target_euler- cur_rpy
+        target_torques = - np.multiply(self.P_COEFF_TOR, rot_e) \
+                         + np.multiply(self.D_COEFF_TOR, rpy_rates_e) \
+                         + np.multiply(self.I_COEFF_TOR, self.integral_rpy_e)
         target_torques = np.clip(target_torques, -3200, 3200)
-
-
 
         # pwm is the motor control signal 
         pwm = thrust + np.dot(self.MIXER_MATRIX, target_torques)

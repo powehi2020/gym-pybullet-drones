@@ -96,10 +96,7 @@ class BaseControl(object):
                                    )
 
     ################################################################################
-    def print_ude (self):
-        
-        
-        return self.ude
+    
 
     def computeControl(self,
                        control_timestep,
