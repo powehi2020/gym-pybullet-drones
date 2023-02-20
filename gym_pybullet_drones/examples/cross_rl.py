@@ -75,10 +75,6 @@ class rl (CtrlAviary,gym.Env):
        
         #### Initialize the simulation #############################
         self.INIT_XYZS = np.array([[1, 0, 0.6],[-1, 0 , 1]])#飞机的初始位置x，y，z
-
-        print(self.INIT_XYZS[0, 2],'aaaaaaaaaaaa')
-
-
         self.AGGR_PHY_STEPS  = int(simulation_freq_hz/control_freq_hz) if aggregate else 1
         self.env = CtrlAviary(drone_model=drone,
                         num_drones=2,
@@ -142,7 +138,7 @@ class rl (CtrlAviary,gym.Env):
         #### Initialize the controllers ############################
         # self.ctrl = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(2)]
 
-        self.ctrl = [DSLPIDControl_old(drone_model=DroneModel('cf2x')) for i in range(1)]
+        self.ctrl = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(1)]
         self.ctrl1 = [DSLPIDControl_old(drone_model=DroneModel('cf2x')) for i in range(1)]
 
         #### Run the simulation ####################################
@@ -205,17 +201,17 @@ class rl (CtrlAviary,gym.Env):
             #     f.write('\n')
             
         
-        with open ('x.txt','a') as f:
-            f.write(str(self.obs[str(0)]["state"][0]))
-            f.write('\n')
+        # with open ('x.txt','a') as f:
+        #     f.write(str(self.obs[str(0)]["state"][0]))
+        #     f.write('\n')
 
-        with open ('y.txt','a') as f:
-            f.write(str(self.obs[str(0)]["state"][1]))
-            f.write('\n')
+        # with open ('y.txt','a') as f:
+        #     f.write(str(self.obs[str(0)]["state"][1]))
+        #     f.write('\n')
 
-        with open ('z.txt','a') as f:
-            f.write(str(self.obs[str(0)]["state"][2]))
-            f.write('\n')
+        # with open ('z.txt','a') as f:
+        #     f.write(str(self.obs[str(0)]["state"][2]))
+        #     f.write('\n')
         # print(self.obs[str(0)]["state"][0])
             
 

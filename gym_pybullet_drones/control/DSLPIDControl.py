@@ -203,29 +203,29 @@ class DSLPIDControl(BaseControl):
         vel_e = np.clip(vel_e,-2,2)
         # vel_e =  target_vel - (pos_e -self.integral_u) / control_timestep
         # self.integral_u = pos_e
-        # with open ('x_c.txt','a') as f:
-        #     f.write(str(cur_pos[0]))
-        #     f.write('\n')
+        with open ('x_c.txt','a') as f:
+            f.write(str(cur_pos[0]))
+            f.write('\n')
 
-        # with open ('y_c.txt','a') as f:
-        #     f.write(str(cur_pos[1]))
-        #     f.write('\n')
+        with open ('y_c.txt','a') as f:
+            f.write(str(cur_pos[1]))
+            f.write('\n')
 
-        # with open ('z_c.txt','a') as f:
-        #     f.write(str(cur_pos[2]))
-        #     f.write('\n')
+        with open ('z_c.txt','a') as f:
+            f.write(str(cur_pos[2]))
+            f.write('\n')
         
-        # with open ('x_t.txt','a') as f:
-        #     f.write(str(target_pos[0]))
-        #     f.write('\n')
+        with open ('x_t.txt','a') as f:
+            f.write(str(target_pos[0]))
+            f.write('\n')
 
-        # with open ('y_t.txt','a') as f:
-        #     f.write(str(target_pos[1]))
-        #     f.write('\n')
+        with open ('y_t.txt','a') as f:
+            f.write(str(target_pos[1]))
+            f.write('\n')
 
-        # with open ('z_t.txt','a') as f:
-        #     f.write(str(target_pos[2]))
-        #     f.write('\n')
+        with open ('z_t.txt','a') as f:
+            f.write(str(target_pos[2]))
+            f.write('\n')
         self.integral_pos_e = self.integral_pos_e + pos_e*control_timestep
         self.integral_pos_e = np.clip(self.integral_pos_e, -2., 2.)
         self.integral_pos_e[2] = np.clip(self.integral_pos_e[2], -0.15, .15)
@@ -244,7 +244,7 @@ class DSLPIDControl(BaseControl):
                         # -np.multiply(0.1*np.array([1, 1, 1]), f_hat) \
                         # + np.multiply(self.I_COEFF_FOR, self.integral_pos_e) \  
 
-        T_ude = 0.5
+        T_ude = 1
        
         
 
@@ -260,13 +260,15 @@ class DSLPIDControl(BaseControl):
         self.acc_y = self.acc_y + acc_1*control_timestep*0.01
         self.acc_z = self.acc_z + acc_2*control_timestep*0.01
 
-        f_x = - 1/T_ude *(self.acc_x+vel_e[0])
-        f_y = - 1/T_ude *(self.acc_y+vel_e[1])
-        f_z = - 1/T_ude *(self.acc_z+vel_e[2])
+        # f_x = - 1/T_ude *(self.acc_x+vel_e[0])
+        # f_y = - 1/T_ude *(self.acc_y+vel_e[1])
+        # f_z = - 1/T_ude *(self.acc_z+vel_e[2])
 
-        # f_x = 0
-        # f_y = 0
-        # f_z = 0
+
+
+        f_x = 0
+        f_y = 0
+        f_z = 0
 
         # scalar_thrust = max(0., np.dot(target_thrust, cur_rotation[:,2]))
         thrust1 = self.GRAVITY + self.GRAVITY/9.8*(acc_2 - f_z)

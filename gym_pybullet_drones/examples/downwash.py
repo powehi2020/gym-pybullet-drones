@@ -14,7 +14,7 @@ import numpy as np
 from gym_pybullet_drones.utils.utils import sync, str2bool
 from gym_pybullet_drones.utils.enums import DroneModel, Physics
 from gym_pybullet_drones.envs.CtrlAviary import CtrlAviary
-from gym_pybullet_drones.control.DSLPIDControl import UDEControl
+from gym_pybullet_drones.control.DSLPIDControl import DSLPIDControl
 from gym_pybullet_drones.utils.Logger import Logger
 
 DEFAULT_DRONE = DroneModel('cf2x')
@@ -55,14 +55,14 @@ def run(
                      )
 
     #### Initialize the trajectories ###########################
-    PERIOD = 5
+    PERIOD = 15
     NUM_WP = control_freq_hz*PERIOD
     TARGET_POS = np.zeros((NUM_WP, 2))
     for i in range(NUM_WP):
         TARGET_POS[i, :] = [np.cos(2*np.pi*(i/NUM_WP)), 0]
-        with open ('x_t.txt','a') as f:
-                    f.write(str(TARGET_POS[0]))
-                    f.write('\n')
+        # with open ('x_t.txt','a') as f:
+        #             f.write(str(TARGET_POS[0]))
+        #             f.write('\n')
     wp_counters = np.array([0, int(NUM_WP/2)])
 
     #### Initialize the logger #################################
@@ -94,20 +94,7 @@ def run(
                                                                        state=obs[str(j)]["state"],
                                                                        target_pos=np.hstack([TARGET_POS[wp_counters[j], :], INIT_XYZS[j, 2]]),
                                                                        )
-                
             
-
-            with open ('x.txt','a') as f:
-                f.write(str(obs[str(0)]["state"][0]))
-                f.write('\n')
-
-            with open ('y.txt','a') as f:
-                f.write(str(obs[str(0)]["state"][1]))
-                f.write('\n')
-
-            with open ('z.txt','a') as f:
-                f.write(str(obs[str(0)]["state"][2]))
-                f.write('\n')
             #### Go to the next way point and loop #####################
             for j in range(2):
                 wp_counters[j] = wp_counters[j] + 1 if wp_counters[j] < (NUM_WP-1) else 0
