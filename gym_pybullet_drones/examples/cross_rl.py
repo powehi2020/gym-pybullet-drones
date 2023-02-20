@@ -24,6 +24,7 @@ from gym_pybullet_drones.utils.utils import sync, str2bool
 from gym_pybullet_drones.utils.enums import DroneModel, Physics
 from gym_pybullet_drones.envs.CtrlAviary import CtrlAviary
 from gym_pybullet_drones.control.DSLPIDControl import DSLPIDControl
+from gym_pybullet_drones.control.DSLPIDControl_old import DSLPIDControl_old
 from gym_pybullet_drones.control.SimplePIDControl import SimplePIDControl
 from gym_pybullet_drones.utils.Logger import Logger
 
@@ -73,7 +74,9 @@ class rl (CtrlAviary,gym.Env):
                                             )
        
         #### Initialize the simulation #############################
-        self.INIT_XYZS = np.array([[1, 0, 0.6],[0, 0, 1]])#飞机的初始位置x，y，z
+        self.INIT_XYZS = np.array([[1, 0, 0.6],[-1, 0 , 1]])#飞机的初始位置x，y，z
+
+        print(self.INIT_XYZS[0, 2],'aaaaaaaaaaaa')
 
 
         self.AGGR_PHY_STEPS  = int(simulation_freq_hz/control_freq_hz) if aggregate else 1
@@ -103,6 +106,8 @@ class rl (CtrlAviary,gym.Env):
         self.TARGET_POS = np.zeros((self.NUM_WP, 2))
         for i in range(self.NUM_WP):
             self.TARGET_POS[i, :] = [np.cos(2*np.pi*(i/self.NUM_WP)), 0]
+           
+
         self.wp_counters = np.array([0, int(self.NUM_WP/2)])
 
         #### Initialize the logger #################################
@@ -135,19 +140,17 @@ class rl (CtrlAviary,gym.Env):
         # p.loadURDF("sphere2red_nocol.urdf", [-0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#红色半圆
         
         #### Initialize the controllers ############################
-        self.ctrl = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(2)]
+        # self.ctrl = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(2)]
 
-        # self.ctrl = [SimplePIDControl(drone_model=DroneModel.HB) for i in range(2)]
+        self.ctrl = [DSLPIDControl_old(drone_model=DroneModel('cf2x')) for i in range(1)]
+        self.ctrl1 = [DSLPIDControl_old(drone_model=DroneModel('cf2x')) for i in range(1)]
 
         #### Run the simulation ####################################
         self.CTRL_EVERY_N_STEPS = int(np.floor(self.env.SIM_FREQ/48))
         self.action = {str(i): np.array([0, 0, 0, 0]) for i in range(2)}
-        print('action',self.action)
+        # print('action',self.action)
         
         self.START = time.time()
-    
-    
-    # def ini (self):
          
         
     def step (self,act=None):
@@ -179,14 +182,41 @@ class rl (CtrlAviary,gym.Env):
         # if i%self.CTRL_EVERY_N_STEPS == 0:
         
 
-            #### Compute control for the current way point #############
-        for j in range(2):
-            self.action[str(j)], _, _ = self.ctrl[j].computeControlFromState(control_timestep=self.CTRL_EVERY_N_STEPS*self.env.TIMESTEP,
-                                                                state=self.obs[str(j)]["state"],
-                                                                target_pos=np.hstack([self.TARGET_POS[self.wp_counters[j], :], self.INIT_XYZS[j, 2]]),
-                                                                ude=act)
-           
+        #     #### Compute control for the current way point #############
+        # for j in range(2):
+        #     self.action[str(j)], _, _ = self.ctrl[j].computeControlFromState(control_timestep=self.CTRL_EVERY_N_STEPS*self.env.TIMESTEP,
+        #                                                         state=self.obs[str(j)]["state"],
+        #                                                         target_pos=np.hstack([self.TARGET_POS[self.wp_counters[j], :], self.INIT_XYZS[j, 2]]),
+        #                                                         ude=act)
             
+        self.action[str(0)], _, _ = self.ctrl[0].computeControlFromState(control_timestep=self.CTRL_EVERY_N_STEPS*self.env.TIMESTEP,
+                                                                state=self.obs[str(0)]["state"],
+                                                                target_pos=np.hstack([self.TARGET_POS[self.wp_counters[0], :], self.INIT_XYZS[0, 2]]),
+                                                                ude=act)    
+        
+        self.action[str(1)], _, _ = self.ctrl1[0].computeControlFromState(control_timestep=self.CTRL_EVERY_N_STEPS*self.env.TIMESTEP,
+                                                                state=self.obs[str(1)]["state"],
+                                                                target_pos=np.hstack([self.TARGET_POS[self.wp_counters[1], :], self.INIT_XYZS[1, 2]]),
+                                                                ude=act) 
+            
+            # print(self.TARGET_POS[self.wp_counters[0], :],self.TARGET_POS[self.wp_counters[1], :],'ppppppp')
+            # with open ('x_t.txt','a') as f:
+            #     f.write(str(self.wp_counters[0]))
+            #     f.write('\n')
+            
+        
+        with open ('x.txt','a') as f:
+            f.write(str(self.obs[str(0)]["state"][0]))
+            f.write('\n')
+
+        with open ('y.txt','a') as f:
+            f.write(str(self.obs[str(0)]["state"][1]))
+            f.write('\n')
+
+        with open ('z.txt','a') as f:
+            f.write(str(self.obs[str(0)]["state"][2]))
+            f.write('\n')
+        # print(self.obs[str(0)]["state"][0])
             
 
         #### Go to the next way point and loop #####################

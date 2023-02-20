@@ -1,15 +1,11 @@
 """Script demonstrating the implementation of the downwash effect model.
-
 Example
 -------
 In a terminal, run as:
-
     $ python downwash.py
-
 Notes
 -----
 The drones move along 2D trajectories in the X-Z plane, between x == +.5 and -.5.
-
 """
 import time
 import argparse
@@ -18,7 +14,7 @@ import numpy as np
 from gym_pybullet_drones.utils.utils import sync, str2bool
 from gym_pybullet_drones.utils.enums import DroneModel, Physics
 from gym_pybullet_drones.envs.CtrlAviary import CtrlAviary
-from gym_pybullet_drones.control.DSLPIDControl import DSLPIDControl
+from gym_pybullet_drones.control.DSLPIDControl import UDEControl
 from gym_pybullet_drones.utils.Logger import Logger
 
 DEFAULT_DRONE = DroneModel('cf2x')
@@ -63,7 +59,10 @@ def run(
     NUM_WP = control_freq_hz*PERIOD
     TARGET_POS = np.zeros((NUM_WP, 2))
     for i in range(NUM_WP):
-        TARGET_POS[i, :] = [0.5*np.cos(2*np.pi*(i/NUM_WP)), 0]
+        TARGET_POS[i, :] = [np.cos(2*np.pi*(i/NUM_WP)), 0]
+        with open ('x_t.txt','a') as f:
+                    f.write(str(TARGET_POS[0]))
+                    f.write('\n')
     wp_counters = np.array([0, int(NUM_WP/2)])
 
     #### Initialize the logger #################################
@@ -74,8 +73,6 @@ def run(
                     colab=colab
                     )
 
-    
-
     #### Initialize the controllers ############################
     ctrl = [DSLPIDControl(drone_model=drone) for i in range(2)]
 
@@ -83,25 +80,34 @@ def run(
     CTRL_EVERY_N_STEPS = int(np.floor(env.SIM_FREQ/control_freq_hz))
     action = {str(i): np.array([0, 0, 0, 0]) for i in range(2)}
     START = time.time()
-    # for i in range(0, int(duration_sec*env.SIM_FREQ), AGGR_PHY_STEPS):
-    for i in range(500):
+    for i in range(0, int(duration_sec*env.SIM_FREQ), AGGR_PHY_STEPS):
 
         #### Step the simulation ###################################
         obs, reward, done, info = env.step(action)
-        # print(reward)
 
         #### Compute control at the desired frequency ##############
         if i%CTRL_EVERY_N_STEPS == 0:
 
             #### Compute control for the current way point #############
             for j in range(2):
-                
                 action[str(j)], _, _ = ctrl[j].computeControlFromState(control_timestep=CTRL_EVERY_N_STEPS*env.TIMESTEP,
                                                                        state=obs[str(j)]["state"],
                                                                        target_pos=np.hstack([TARGET_POS[wp_counters[j], :], INIT_XYZS[j, 2]]),
                                                                        )
                 
+            
 
+            with open ('x.txt','a') as f:
+                f.write(str(obs[str(0)]["state"][0]))
+                f.write('\n')
+
+            with open ('y.txt','a') as f:
+                f.write(str(obs[str(0)]["state"][1]))
+                f.write('\n')
+
+            with open ('z.txt','a') as f:
+                f.write(str(obs[str(0)]["state"][2]))
+                f.write('\n')
             #### Go to the next way point and loop #####################
             for j in range(2):
                 wp_counters[j] = wp_counters[j] + 1 if wp_counters[j] < (NUM_WP-1) else 0
