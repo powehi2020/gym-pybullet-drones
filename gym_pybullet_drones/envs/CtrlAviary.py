@@ -205,7 +205,7 @@ class CtrlAviary(BaseAviary):
 
         """
         if self.state[2] > 0 :
-        	print("succeseful")
+        	# print("succeseful")
         	return True
         else:
         	return False

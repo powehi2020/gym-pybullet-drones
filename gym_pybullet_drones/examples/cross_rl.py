@@ -39,7 +39,7 @@ DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
 
 
-class rl (CtrlAviary,gym.Env):
+class rl_ude (CtrlAviary,gym.Env):
              
         
         
@@ -60,7 +60,7 @@ class rl (CtrlAviary,gym.Env):
         # 定义动作空间
         self.action_space = spaces.Box(
             low=np.array([0.1]),
-            high=np.array([1.]),
+            high=np.array([30.]),
             dtype=np.float32
             )
         # self.self.PYB_CLIENT = p.connect(p.GUI if self._render else p.DIRECT)
@@ -97,7 +97,7 @@ class rl (CtrlAviary,gym.Env):
         
 
         #### Initialize the trajectories ###########################
-        PERIOD = 15
+        PERIOD = 20
         self.NUM_WP = control_freq_hz*PERIOD
         self.TARGET_POS = np.zeros((self.NUM_WP, 2))
         for i in range(self.NUM_WP):
@@ -133,18 +133,17 @@ class rl (CtrlAviary,gym.Env):
 
         p.loadURDF("cube_no_rotation.urdf", [0.7,-1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#正方体
         p.loadURDF("cube_no_rotation.urdf", [0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#正方体
-        # p.loadURDF("sphere2red_nocol.urdf", [-0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#红色半圆
+
         
         #### Initialize the controllers ############################
         # self.ctrl = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(2)]
 
-        self.ctrl = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(1)]
-        self.ctrl1 = [DSLPIDControl_old(drone_model=DroneModel('cf2x')) for i in range(1)]
+        self.ctrl = [DSLPIDControl_old(drone_model=DroneModel('cf2x')) for i in range(1)]
+        self.ctrl1 = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(1)]
 
         #### Run the simulation ####################################
         self.CTRL_EVERY_N_STEPS = int(np.floor(self.env.SIM_FREQ/48))
         self.action = {str(i): np.array([0, 0, 0, 0]) for i in range(2)}
-        # print('action',self.action)
         
         self.START = time.time()
          
@@ -167,53 +166,21 @@ class rl (CtrlAviary,gym.Env):
             
 
         #### Step the simulation ###################################
-        self.obs, reward, done, info = self.env.step(self.action)
+        self.obs, reward, dones, info = self.env.step(self.action)
         self.state = np.array([self.obs['1']['state'][0],self.obs['1']['state'][1],self.obs['1']['state'][2],self.obs['1']['state'][3],self.obs['1']['state'][4],self.obs['1']['state'][5],self.obs['1']['state'][6],self.obs['1']['state'][7],self.obs['1']['state'][8],self.obs['1']['state'][9],self.obs['1']['state'][10],self.obs['1']['state'][11],self.obs['1']['state'][12],self.obs['1']['state'][13],self.obs['1']['state'][14],self.obs['1']['state'][15],self.obs['1']['state'][16],self.obs['1']['state'][17],self.obs['1']['state'][18],self.obs['1']['state'][19]], dtype=np.float32)
 
-        # print("aaaaaaaaaaaaaaaaaaaaaaaaaa")
-        # print(action)
-        # print("aaaaaaaaaaaaaaaaaaa")
-
-        #### Compute control at the desired frequency ##############
-        # if i%self.CTRL_EVERY_N_STEPS == 0:
-        
-
-        #     #### Compute control for the current way point #############
-        # for j in range(2):
-        #     self.action[str(j)], _, _ = self.ctrl[j].computeControlFromState(control_timestep=self.CTRL_EVERY_N_STEPS*self.env.TIMESTEP,
-        #                                                         state=self.obs[str(j)]["state"],
-        #                                                         target_pos=np.hstack([self.TARGET_POS[self.wp_counters[j], :], self.INIT_XYZS[j, 2]]),
-        #                                                         ude=act)
-            
+        ### 上方无人机的控制器    
         self.action[str(0)], _, _ = self.ctrl[0].computeControlFromState(control_timestep=self.CTRL_EVERY_N_STEPS*self.env.TIMESTEP,
                                                                 state=self.obs[str(0)]["state"],
                                                                 target_pos=np.hstack([self.TARGET_POS[self.wp_counters[0], :], self.INIT_XYZS[0, 2]]),
-                                                                ude=act)    
-        
+                                                                ude=None)    
+        ### 下方无人机的控制器 
         self.action[str(1)], _, _ = self.ctrl1[0].computeControlFromState(control_timestep=self.CTRL_EVERY_N_STEPS*self.env.TIMESTEP,
                                                                 state=self.obs[str(1)]["state"],
                                                                 target_pos=np.hstack([self.TARGET_POS[self.wp_counters[1], :], self.INIT_XYZS[1, 2]]),
                                                                 ude=act) 
-            
-            # print(self.TARGET_POS[self.wp_counters[0], :],self.TARGET_POS[self.wp_counters[1], :],'ppppppp')
-            # with open ('x_t.txt','a') as f:
-            #     f.write(str(self.wp_counters[0]))
-            #     f.write('\n')
-            
-        
-        # with open ('x.txt','a') as f:
-        #     f.write(str(self.obs[str(0)]["state"][0]))
-        #     f.write('\n')
-
-        # with open ('y.txt','a') as f:
-        #     f.write(str(self.obs[str(0)]["state"][1]))
-        #     f.write('\n')
-
-        # with open ('z.txt','a') as f:
-        #     f.write(str(self.obs[str(0)]["state"][2]))
-        #     f.write('\n')
-        # print(self.obs[str(0)]["state"][0])
-            
+        rewards = self.ctrl1[0].compute_reward()
+        done = self.ctrl1[0].compute_done()
 
         #### Go to the next way point and loop #####################
         for j in range(2):
@@ -241,25 +208,15 @@ class rl (CtrlAviary,gym.Env):
         #### Close the environment #################################
         # self.env.close()
 
-        #### Save the simulation results ###########################
-        # logger.save()
-        # logger.save_as_csv("dw") # Optional CSV save
-
-        #### Plot the simulation results ###########################
-        # if True:
-        #     self.logger.plot()
             
-        return self.state, reward, done, info
-            
-    # def _observationSpace(self):
-    #     state = self.state
-    #     return state
+        return self.state, rewards, done, info
+    
        
     def close (self):
         p.disconnect(physicsClientId=self.PYB_CLIENT)
         
     def reset (self):
-        # p.resetSimulation(physicsClientId=self.PYB_CLIENT)
+       
         
 
         state=np.array(20*[0.], dtype=np.float32)
@@ -270,44 +227,3 @@ class rl (CtrlAviary,gym.Env):
         
 
 
-# if __name__ == "__main__":
-    
-
-#     from stable_baselines3 import PPO
-#     from stable_baselines3.common.env_util import make_vec_env
-
-#     # Parallel environments
-#     env = rl()
-#     print('link start')
-
-#     model = PPO("MlpPolicy", env, verbose=1)
-#     model.learn(total_timesteps=25)
-#     model.save("ppo_cartpole")
-
-#     del model # remove to demonstrate saving and loading
-
-#     model = PPO.load("ppo_cartpole")
-
-#     obs = env.reset()
-#     while True:
-#         action, _states = model.predict(obs)
-#         obs, rewards, dones, info = env.step(action)
-#         # env.render()
-    
-    
-    
-    
-#     # from stable_baselines3 import PPO2
-#     # from stable_baselines3 import deepq
-#     # env = rl()
-    
-#     # model = deepq.DQN(policy="MlpPolicy", env=env)
-#     # model.learn(total_timesteps=10000)
-
-#     # obs = env.reset()
-#     # # 验证十次
-#     # for _ in range(10):
-#     #     action, state = model.predict(observation=obs)
-#     #     print(action)
-#     #     obs, reward, done, info = env.step(action)
-#     #     env.render()

@@ -97,6 +97,9 @@ class BaseControl(object):
 
     ################################################################################
     
+    def get_action(self):
+
+        return self.ude
 
     def computeControl(self,
                        control_timestep,
