@@ -210,11 +210,9 @@ class DSLPIDControl(BaseControl):
         self.done_pos = cur_pos
         # vel_e =  target_vel - (pos_e -self.integral_u) / control_timestep
         # self.integral_u = pos_e
-        A = self.get_action()
+        # A = self.get_action()
 
-        print(A,'ACTION')
-
-        
+        # print(A,'ACTION')
         
         self.integral_pos_e = self.integral_pos_e + pos_e*control_timestep
         self.integral_pos_e = np.clip(self.integral_pos_e, -2., 2.)
@@ -222,28 +220,28 @@ class DSLPIDControl(BaseControl):
 
         #### UDE target thrust #####################################
 
-        T_ude = A[0]
+        # T_ude = A[0]
         # T_ude = 0.7
 
         acc_0 = k_p[0]*pos_e[0] + k_d[0]*vel_e[0] 
         acc_1 = k_p[1]*pos_e[1] + k_d[1]*vel_e[1]
         acc_2 = k_p[2]*pos_e[2] + k_d[2]*vel_e[2]
         
-        # acc_0 = np.clip(acc_0,-2,2)
-        # acc_1 = np.clip(acc_1,-2,2)
+        acc_0 = np.clip(acc_0,-2,2)
+        acc_1 = np.clip(acc_1,-2,2)
         # acc_2 = np.clip(acc_2,-2,2)
 
         self.acc_x = self.acc_x + acc_0*control_timestep
         self.acc_y = self.acc_y + acc_1*control_timestep
         self.acc_z = self.acc_z + acc_2*control_timestep
 
-        f_x = - 1/T_ude *(self.acc_x-cur_vel[0])
-        f_y = - 1/T_ude *(self.acc_y-cur_vel[1])
-        f_z = - 1/T_ude *(self.acc_z-cur_vel[2])
+        # f_x = - 1/T_ude *(self.acc_x-cur_vel[0])
+        # f_y = - 1/T_ude *(self.acc_y-cur_vel[1])
+        # f_z = - 1/T_ude *(self.acc_z-cur_vel[2])
 
-        # f_x = 0
-        # f_y = 0
-        # f_z = 0
+        f_x = 0
+        f_y = 0
+        f_z = 0
 
         thrust1 = self.GRAVITY + self.GRAVITY/9.8*(acc_2 - f_z)
         thrust = (math.sqrt(thrust1 / (4*self.KF)) - self.PWM2RPM_CONST) / self.PWM2RPM_SCALE

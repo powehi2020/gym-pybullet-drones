@@ -722,6 +722,7 @@ class BaseAviary(gym.Env):
                                      flags=p.LINK_FRAME,
                                      physicsClientId=self.CLIENT
                                      )
+                # pass
         #### TODO: a more realistic model accounting for the drone's
         #### Attitude and its z-axis velocity in the world frame ###
     

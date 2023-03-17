@@ -73,8 +73,8 @@ def run(
                     output_folder=output_folder,
                     colab=colab
                     )
-    # p.loadURDF("cube_no_rotation.urdf", [0.5,-1,0], p.getQuaternionFromEuler([0,0,0]))#正方体
-    # p.loadURDF("cube_no_rotation.urdf", [0.5,1,0], p.getQuaternionFromEuler([0,0,0]))#正方体
+    p.loadURDF("cube_no_rotation.urdf", [0.5,-1,0], p.getQuaternionFromEuler([0,0,0]))#正方体
+    p.loadURDF("cube_no_rotation.urdf", [0.5,1,0], p.getQuaternionFromEuler([0,0,0]))#正方体
     #### Initialize the controllers ############################
 
     ctrl = [DSLPIDControl_old(drone_model=DroneModel('cf2x')) for i in range(1)]### 上方无人机的控制器

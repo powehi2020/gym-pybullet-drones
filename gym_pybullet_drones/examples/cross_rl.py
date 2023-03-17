@@ -90,8 +90,6 @@ class rl_ude (CtrlAviary,gym.Env):
         
         self.step_num = 0
         self.PYB_CLIENT = self.env.getPyBulletClient()
-        #### Obtain the PyBullet Client ID from the environment ####
-        # self.PYB_CLIENT = self.env.getPyBulletClient()
         
         
         
@@ -136,7 +134,7 @@ class rl_ude (CtrlAviary,gym.Env):
 
         
         #### Initialize the controllers ############################
-        # self.ctrl = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(2)]
+       
 
         self.ctrl = [DSLPIDControl_old(drone_model=DroneModel('cf2x')) for i in range(1)]
         self.ctrl1 = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(1)]
@@ -149,26 +147,10 @@ class rl_ude (CtrlAviary,gym.Env):
          
         
     def step (self,act=None):
-
-        # #### Initialize the controllers ############################
-        # self.ctrl = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(2)]
-        
-        
-        
-
-        # #### Run the simulation ####################################
-        # self.CTRL_EVERY_N_STEPS = int(np.floor(self.env.SIM_FREQ/48))
-        # action = {str(i): np.array([0, 0, 0, 0]) for i in range(2)}
-        # print('action',action)
-        
-        # self.START = time.time()
-        # for i in range(0, int(12*self.env.SIM_FREQ), self.AGGR_PHY_STEPS ):
-            
-
         #### Step the simulation ###################################
         self.obs, reward, dones, info = self.env.step(self.action)
         self.state = np.array([self.obs['1']['state'][0],self.obs['1']['state'][1],self.obs['1']['state'][2],self.obs['1']['state'][3],self.obs['1']['state'][4],self.obs['1']['state'][5],self.obs['1']['state'][6],self.obs['1']['state'][7],self.obs['1']['state'][8],self.obs['1']['state'][9],self.obs['1']['state'][10],self.obs['1']['state'][11],self.obs['1']['state'][12],self.obs['1']['state'][13],self.obs['1']['state'][14],self.obs['1']['state'][15],self.obs['1']['state'][16],self.obs['1']['state'][17],self.obs['1']['state'][18],self.obs['1']['state'][19]], dtype=np.float32)
-
+        print(self.obs[str(1)]["state"],'sssssssssssssss',self.state)
         ### 上方无人机的控制器    
         self.action[str(0)], _, _ = self.ctrl[0].computeControlFromState(control_timestep=self.CTRL_EVERY_N_STEPS*self.env.TIMESTEP,
                                                                 state=self.obs[str(0)]["state"],
@@ -213,15 +195,15 @@ class rl_ude (CtrlAviary,gym.Env):
     
        
     def close (self):
-        p.disconnect(physicsClientId=self.PYB_CLIENT)
+        self.env.close()
+        
         
     def reset (self):
-       
+        self.obs, reward, dones, info = self.env.step(self.action)
         
-
-        state=np.array(20*[0.], dtype=np.float32)
-
-        return state
+        state=np.array(20*[0.], dtype=np.float32)   
+        # print(self.obs,'sss')
+        return self.obs[str(1)]["state"]
         
     
         
