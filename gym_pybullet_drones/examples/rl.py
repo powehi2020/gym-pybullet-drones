@@ -16,11 +16,13 @@ from stable_baselines3.common.env_util import make_vec_env
 env = rl_ude (render=True)
 
 model = PPO("MlpPolicy", env, verbose=1)
-model.learn(total_timesteps=60)
-model.save("ppo1")
+model.learn(total_timesteps=60000)
+model.save("ppo1_60000")
+
+
 del model # remove to demonstrate saving and loading
 model = PPO.load("ppo1")
-print('ooo')
+# print('ooo')
 # vec_env = model.get_env()
 x=[]
 y=[]

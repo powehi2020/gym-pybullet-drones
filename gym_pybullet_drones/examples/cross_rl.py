@@ -150,7 +150,6 @@ class rl_ude (CtrlAviary,gym.Env):
         #### Step the simulation ###################################
         self.obs, reward, dones, info = self.env.step(self.action)
         self.state = np.array([self.obs['1']['state'][0],self.obs['1']['state'][1],self.obs['1']['state'][2],self.obs['1']['state'][3],self.obs['1']['state'][4],self.obs['1']['state'][5],self.obs['1']['state'][6],self.obs['1']['state'][7],self.obs['1']['state'][8],self.obs['1']['state'][9],self.obs['1']['state'][10],self.obs['1']['state'][11],self.obs['1']['state'][12],self.obs['1']['state'][13],self.obs['1']['state'][14],self.obs['1']['state'][15],self.obs['1']['state'][16],self.obs['1']['state'][17],self.obs['1']['state'][18],self.obs['1']['state'][19]], dtype=np.float32)
-        print(self.obs[str(1)]["state"],'sssssssssssssss',self.state)
         ### 上方无人机的控制器    
         self.action[str(0)], _, _ = self.ctrl[0].computeControlFromState(control_timestep=self.CTRL_EVERY_N_STEPS*self.env.TIMESTEP,
                                                                 state=self.obs[str(0)]["state"],
@@ -168,27 +167,11 @@ class rl_ude (CtrlAviary,gym.Env):
         for j in range(2):
             self.wp_counters[j] = self.wp_counters[j] + 1 if self.wp_counters[j] < (self.NUM_WP-1) else 0
 
-            # #### Log the simulation ####################################
-        # for j in range(2):
-        #     self.logger.log(drone=j,
-        #             timestamp=1/self.env.SIM_FREQ,
-        #             state=self.obs[str(j)]["state"],
-        #             control=np.hstack([self.TARGET_POS[self.wp_counters[j], :], self.INIT_XYZS[j ,2], np.zeros(9)])
-        #             )
-                
-        
-
-            # #### Printout ##############################################
-            # if i%self.env.SIM_FREQ == 0:
-            #     self.env.render()
-
             # #### Sync the simulation ###################################
             if True:
                 sync(j, self.START, self.env.TIMESTEP)
                 # print('时间',self.START)
 
-        #### Close the environment #################################
-        # self.env.close()
 
             
         return self.state, rewards, done, info
@@ -199,9 +182,13 @@ class rl_ude (CtrlAviary,gym.Env):
         
         
     def reset (self):
-        self.obs, reward, dones, info = self.env.step(self.action)
-        
-        state=np.array(20*[0.], dtype=np.float32)   
+        # self.obs, reward, dones, info = self.env.step(self.action)
+
+        self.obs = self.env.reset()
+        self.wp_counters = np.array([0,int(self.NUM_WP/2)])
+        p.loadURDF("cube_no_rotation.urdf", [0.7,-1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#正方体
+        p.loadURDF("cube_no_rotation.urdf", [0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#正方体
+
         # print(self.obs,'sss')
         return self.obs[str(1)]["state"]
         

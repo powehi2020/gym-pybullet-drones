@@ -350,24 +350,25 @@ class DSLPIDControl(BaseControl):
         torque_z=kp_m[2]*rot_e[2] + kd_m[2]*rpy_rates_e[2]
 
         #### UDE design ####################################
-        T_torque_ude = 30
+        A = self.get_action()
+
+        T_torque_ude = A[0]
 
         self.torque_x = self.torque_x + torque_x*control_timestep
         self.torque_y = self.torque_y + torque_y*control_timestep
         self.torque_z = self.torque_z + torque_z *control_timestep
         
-        # f_torque_x = 1 / T_torque_ude *(cur_rpy_rates[0]-self.torque_x)
-        # f_torque_y = 1 / T_torque_ude *(cur_rpy_rates[1]-self.torque_y)
-        # f_torque_z = 1 / T_torque_ude *(cur_rpy_rates[2]-self.torque_z)
+        f_torque_x = 1 / T_torque_ude *(cur_rpy_rates[0]-self.torque_x)
+        f_torque_y = 1 / T_torque_ude *(cur_rpy_rates[1]-self.torque_y)
+        f_torque_z = 1 / T_torque_ude *(cur_rpy_rates[2]-self.torque_z)
     
-        f_torque_x = 0
-        f_torque_y = 0
-        f_torque_z = 0
+        # f_torque_x = 0
+        # f_torque_y = 0
+        # f_torque_z = 0
 
 
         target_torques = np.array([torque_x-f_torque_x ,torque_y-f_torque_y,torque_z-f_torque_z])
-        # target_torques = np.array([kp_m[0]*rot_e[0],kp_m[1]*rot_e[1],kp_m[2]*rot_e[2]])+\
-        #                     np.array([kd_m[0]*rpy_rates_e[0],kd_m[1]*rpy_rates_e[1],kd_m[2]*rpy_rates_e[2]])
+       
                   
         target_torques = np.dot(I,target_torques) /self.KM
         # print(target_torques,'target_torques')
@@ -397,7 +398,7 @@ class DSLPIDControl(BaseControl):
         '''compute the reward of the current state'''                 
         if self.reward_pos[0]>5:
             return False
-        if self.done_pos[0] == 1:
+        if self.done_pos[0] > 1:
             print('done')
             return True
         

@@ -43,7 +43,7 @@ def run(
         colab=DEFAULT_COLAB
     ):
     #### Initialize the simulation #############################
-    INIT_XYZS = np.array([[.5, 0, 1],[-0.5, 0, 0.5]])
+    INIT_XYZS = np.array([[.5, 0, 1],[-0.5, 0, 0.7]])
     # print(INIT_XYZS[0, 2],INIT_XYZS[1, 2],'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
     AGGR_PHY_STEPS = int(simulation_freq_hz/control_freq_hz) if aggregate else 1
     env = CtrlAviary(drone_model=drone,
