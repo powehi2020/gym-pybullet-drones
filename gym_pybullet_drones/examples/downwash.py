@@ -19,6 +19,8 @@ from gym_pybullet_drones.envs.CtrlAviary import CtrlAviary
 from gym_pybullet_drones.control.DSLPIDControl import DSLPIDControl
 from gym_pybullet_drones.utils.Logger import Logger
 from gym_pybullet_drones.control.DSLPIDControl_old import DSLPIDControl_old
+from gym_pybullet_drones.control.SimplePIDControl import SimplePIDControl
+
 
 DEFAULT_DRONE = DroneModel('cf2x')
 DEFAULT_GUI = True
@@ -43,7 +45,7 @@ def run(
         colab=DEFAULT_COLAB
     ):
     #### Initialize the simulation #############################
-    INIT_XYZS = np.array([[.5, 0, 1],[-0.5, 0, 0.7]])
+    INIT_XYZS = np.array([[.5, 0, 1],[-0.5, 0, 0.3]])
     # print(INIT_XYZS[0, 2],INIT_XYZS[1, 2],'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
     AGGR_PHY_STEPS = int(simulation_freq_hz/control_freq_hz) if aggregate else 1
     env = CtrlAviary(drone_model=drone,

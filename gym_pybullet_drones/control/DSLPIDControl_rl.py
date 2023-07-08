@@ -5,7 +5,6 @@ from scipy.spatial.transform import Rotation
 import random
 
 from gym_pybullet_drones.control.BaseControl import BaseControl
-from gym_pybullet_drones.control.drone_controller import drone_controller
 from gym_pybullet_drones.utils.enums import DroneModel
 import time
 
@@ -85,11 +84,10 @@ class DSLPIDControl(BaseControl):
         self.last_rpy = np.zeros(3)
         #### Initialized PID control variables #####################
         self.last_pos_e = np.zeros(3)
-        self.last_vel_e = np.zeros(3)
         self.integral_pos_e = np.zeros(3)
         self.last_rpy_e = np.zeros(3)
         self.integral_rpy_e = np.zeros(3)
-        # rpy_rates_e = target_rpy_rates - (cur_rpy - self.last_rpy)/control_timestep
+
         ####ude
         self.integral_rpy = np.zeros(3)
         self.integral_u = np.zeros(3)
@@ -219,6 +217,12 @@ class DSLPIDControl(BaseControl):
         print(cur_pos)
         self.vel = vel_e
 
+        # vel_e =  target_vel - (pos_e -self.integral_u) / control_timestep
+        # self.integral_u = pos_e
+        # A = self.get_action()
+
+        # print(A,'ACTION')
+        
         self.integral_pos_e = self.integral_pos_e + pos_e*control_timestep
         self.integral_pos_e = np.clip(self.integral_pos_e, -2., 2.)
         self.integral_pos_e[2] = np.clip(self.integral_pos_e[2], -0.15, .15)
@@ -227,42 +231,18 @@ class DSLPIDControl(BaseControl):
 
         # T_ude = A[0]
         # T_ude = 0.7
-        #### 位置控制 #####################################
-        vx = k_p[0]*pos_e[0] + k_d[0]*vel_e[0] 
-        vy = k_p[1]*pos_e[1] + k_d[1]*vel_e[1]
-        vz = k_p[2]*pos_e[2] + k_d[2]*vel_e[2]
-
 
         acc_0 = k_p[0]*pos_e[0] + k_d[0]*vel_e[0] 
         acc_1 = k_p[1]*pos_e[1] + k_d[1]*vel_e[1]
         acc_2 = k_p[2]*pos_e[2] + k_d[2]*vel_e[2]
-
         
-        
-        #### 速度控制 #####################################
-        kv_p = [1,1,2]
-        kv_d = [0,0,0]
-        v_d = [1/9.8*vx,1/9.8*vy,vz]
-
-        v_e = v_d - cur_vel 
-
-        
-
-        v_de = (v_e - self.last_vel_e)/control_timestep
-
-        print(v_e,v_de)
-
-        u_roll = kv_p[0]*(v_e[0]) +  kv_d[0]*v_de[0]
-        u_pitch = (kv_p[1]*(v_e[1]) +  kv_d[0]*v_de[1])
-        thrust1 = kv_p[2]*(v_e[2]) +  kv_d[0]*(v_de[2])
-       
         acc_0 = np.clip(acc_0,-2,2)
         acc_1 = np.clip(acc_1,-2,2)
+        # acc_2 = np.clip(acc_2,-2,2)
 
-        #### UDE 控制 #####################################
-        # self.acc_x = self.acc_x + acc_0*control_timestep
-        # self.acc_y = self.acc_y + acc_1*control_timestep
-        # self.acc_z = self.acc_z + acc_2*control_timestep
+        self.acc_x = self.acc_x + acc_0*control_timestep
+        self.acc_y = self.acc_y + acc_1*control_timestep
+        self.acc_z = self.acc_z + acc_2*control_timestep
 
         # f_x = - 1/T_ude *(self.acc_x-cur_vel[0])
         # f_y = - 1/T_ude *(self.acc_y-cur_vel[1])
@@ -272,27 +252,44 @@ class DSLPIDControl(BaseControl):
         f_y = 0
         f_z = 0
 
-        
-        thrust1 = self.GRAVITY + self.GRAVITY/9.8*(thrust1)
-        # thrust1 = self.GRAVITY + self.GRAVITY/9.8*(acc_2 - f_z)
+        thrust1 = self.GRAVITY + self.GRAVITY/9.8*(acc_2 - f_z)
         thrust = (math.sqrt(thrust1 / (4*self.KF)) - self.PWM2RPM_CONST) / self.PWM2RPM_SCALE
+        
+        # with open('acc_0.txt','a')as f:
+        #     f.write(str(acc_0))
+        #     f.write('\n')
+
         phi_des_dd = 1/9.8*(-acc_1+f_y)  
         theta_des_dd = 1/9.8*(acc_0-f_x) 
 
-        # target_euler = np.array([phi_des_dd,theta_des_dd,0. ])
-        target_euler = np.array([-u_pitch,u_roll,0. ])
-
-
-        self.last_pos_e = [pos_e[0],pos_e[1],pos_e[2]]
-        self.last_vel_e = v_e
-        
-
+        target_euler = np.array([phi_des_dd,theta_des_dd,0. ])
 
         ## 存取数据/home/lkd/test_data/2023_3_14
         # with open ('/home/lkd/test_data/'+time.strftime("%Y_%m_%d", time.localtime())+'/x_c.txt','a') as f:
         #     f.write(str(cur_pos[0]))
         #     f.write('\n')
         
+
+        # with open ('/home/lkd/test_data/'+time.strftime("%Y_%m_%d", time.localtime())+'/y_c.txt','a') as f:
+        #     f.write(str(cur_pos[1]))
+        #     f.write('\n')
+       
+
+        # with open ('/home/lkd/test_data/'+time.strftime("%Y_%m_%d", time.localtime())+'/z_c.txt','a') as f:
+        #     f.write(str(cur_pos[2]))
+        #     f.write('\n')
+        
+        # with open ('/home/lkd/test_data/'+time.strftime("%Y_%m_%d", time.localtime())+'/x_t.txt','a') as f:
+        #     f.write(str(target_pos[0]))
+        #     f.write('\n')
+
+        # with open ('/home/lkd/test_data/'+time.strftime("%Y_%m_%d", time.localtime())+'/y_t.txt','a') as f:
+        #     f.write(str(target_pos[1]))
+        #     f.write('\n')
+
+        # with open ('/home/lkd/test_data/'+time.strftime("%Y_%m_%d", time.localtime())+'/z_t.txt','a') as f:
+        #     f.write(str(target_pos[2]))
+        #     f.write('\n')
 
 
         if np.any(np.abs(target_euler) > math.pi):
@@ -364,12 +361,14 @@ class DSLPIDControl(BaseControl):
         torque_y=kp_m[1]*rot_e[1] + kd_m[1]*rpy_rates_e[1]
         torque_z=kp_m[2]*rot_e[2] + kd_m[2]*rpy_rates_e[2]
 
-        #### UDE design ####################################
+        ####  rl design ####################################
+        #没有用强化学习要注释掉
         # A = self.get_action()
 
         # T_torque_ude = A[0]
         # print(A[0])
 
+        #### UDE  design ####################################
         self.torque_x = self.torque_x + torque_x*control_timestep
         self.torque_y = self.torque_y + torque_y*control_timestep
         self.torque_z = self.torque_z + torque_z *control_timestep
