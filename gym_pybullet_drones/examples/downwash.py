@@ -1,26 +1,25 @@
 """Script demonstrating the implementation of the downwash effect model.
+
 Example
 -------
 In a terminal, run as:
+
     $ python downwash.py
+
 Notes
 -----
 The drones move along 2D trajectories in the X-Z plane, between x == +.5 and -.5.
+
 """
 import time
 import argparse
 import numpy as np
-import pybullet as p
-
 
 from gym_pybullet_drones.utils.utils import sync, str2bool
 from gym_pybullet_drones.utils.enums import DroneModel, Physics
 from gym_pybullet_drones.envs.CtrlAviary import CtrlAviary
 from gym_pybullet_drones.control.DSLPIDControl import DSLPIDControl
 from gym_pybullet_drones.utils.Logger import Logger
-from gym_pybullet_drones.control.DSLPIDControl_old import DSLPIDControl_old
-from gym_pybullet_drones.control.SimplePIDControl import SimplePIDControl
-
 
 DEFAULT_DRONE = DroneModel('cf2x')
 DEFAULT_GUI = True
@@ -45,8 +44,7 @@ def run(
         colab=DEFAULT_COLAB
     ):
     #### Initialize the simulation #############################
-    INIT_XYZS = np.array([[.5, 0, 1],[-0.5, 0, 0.3]])
-    # print(INIT_XYZS[0, 2],INIT_XYZS[1, 2],'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
+    INIT_XYZS = np.array([[.5, 0, 1],[-.5, 0, .5]])
     AGGR_PHY_STEPS = int(simulation_freq_hz/control_freq_hz) if aggregate else 1
     env = CtrlAviary(drone_model=drone,
                      num_drones=2,
@@ -75,14 +73,9 @@ def run(
                     output_folder=output_folder,
                     colab=colab
                     )
-    p.loadURDF("cube_no_rotation.urdf", [0.5,-1,0], p.getQuaternionFromEuler([0,0,0]))#正方体
-    p.loadURDF("cube_no_rotation.urdf", [0.5,1,0], p.getQuaternionFromEuler([0,0,0]))#正方体
+
     #### Initialize the controllers ############################
-
-    ctrl = [DSLPIDControl_old(drone_model=DroneModel('cf2x')) for i in range(1)]### 上方无人机的控制器
-    
-    ctrl1 = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(1)]### 下方无人机的控制器
-
+    ctrl = [DSLPIDControl(drone_model=drone) for i in range(2)]
 
     #### Run the simulation ####################################
     CTRL_EVERY_N_STEPS = int(np.floor(env.SIM_FREQ/control_freq_hz))
@@ -97,16 +90,11 @@ def run(
         if i%CTRL_EVERY_N_STEPS == 0:
 
             #### Compute control for the current way point #############
-            ### 上方无人机的控制器    
-            action[str(0)], _, _ = ctrl[0].computeControlFromState(control_timestep=CTRL_EVERY_N_STEPS*env.TIMESTEP,
-                                                                state=obs[str(0)]["state"],
-                                                                target_pos=np.hstack([TARGET_POS[wp_counters[0], :], INIT_XYZS[0, 2]]),
-                                                                ude=None)    
-        ### 下方无人机的控制器 
-            action[str(1)], _, _ = ctrl1[0].computeControlFromState(control_timestep=CTRL_EVERY_N_STEPS*env.TIMESTEP,
-                                                                state=obs[str(1)]["state"],
-                                                                target_pos=np.hstack([TARGET_POS[wp_counters[1], :], INIT_XYZS[1, 2]]),
-                                                                ude=None) 
+            for j in range(2):
+                action[str(j)], _, _ = ctrl[j].computeControlFromState(control_timestep=CTRL_EVERY_N_STEPS*env.TIMESTEP,
+                                                                       state=obs[str(j)]["state"],
+                                                                       target_pos=np.hstack([TARGET_POS[wp_counters[j], :], INIT_XYZS[j, 2]]),
+                                                                       )
 
             #### Go to the next way point and loop #####################
             for j in range(2):
