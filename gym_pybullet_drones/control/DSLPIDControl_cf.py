@@ -202,8 +202,8 @@ class DSLPIDControl(BaseControl):
 
         """
         cur_rotation = np.array(p.getMatrixFromQuaternion(cur_quat)).reshape(3, 3)
-        k_p = [15,15,30]
-        k_d = [10,10,12]
+        k_p = [15,15,12]
+        k_d = [0.2,0.2,0.2]
         # target_vel = np.array([0., 0., 0.])
         pos_e = target_pos - cur_pos
         vel_e = target_vel - cur_vel
@@ -216,7 +216,7 @@ class DSLPIDControl(BaseControl):
         # print(cur_pos,'kk')
 
         self.pos = cur_pos
-        print(cur_pos)
+        # print(cur_pos)
         self.vel = vel_e
 
         self.integral_pos_e = self.integral_pos_e + pos_e*control_timestep
@@ -226,12 +226,11 @@ class DSLPIDControl(BaseControl):
         #### UDE target thrust #####################################
 
         # T_ude = A[0]
-        # T_ude = 0.7
+        T_ude = 1
         #### 位置控制 #####################################
         vx = k_p[0]*pos_e[0] + k_d[0]*vel_e[0] 
         vy = k_p[1]*pos_e[1] + k_d[1]*vel_e[1]
         vz = k_p[2]*pos_e[2] + k_d[2]*vel_e[2]
-
 
         acc_0 = k_p[0]*pos_e[0] + k_d[0]*vel_e[0] 
         acc_1 = k_p[1]*pos_e[1] + k_d[1]*vel_e[1]
@@ -240,9 +239,10 @@ class DSLPIDControl(BaseControl):
         
         
         #### 速度控制 #####################################
-        kv_p = [1,1,2]
-        kv_d = [0,0,0]
-        v_d = [1/9.8*vx,1/9.8*vy,vz]
+        kv_p = [20,20,20]
+        kv_d = [0.01,0.01,0.01]
+        
+        v_d = [vx,vy,vz]+target_vel
 
         v_e = v_d - cur_vel 
 
@@ -250,7 +250,7 @@ class DSLPIDControl(BaseControl):
 
         v_de = (v_e - self.last_vel_e)/control_timestep
 
-        print(v_e,v_de)
+        # print('cf')
 
         u_roll = kv_p[0]*(v_e[0]) +  kv_d[0]*v_de[0]
         u_pitch = (kv_p[1]*(v_e[1]) +  kv_d[0]*v_de[1])
@@ -258,6 +258,9 @@ class DSLPIDControl(BaseControl):
        
         acc_0 = np.clip(acc_0,-2,2)
         acc_1 = np.clip(acc_1,-2,2)
+
+        u_roll = np.clip(u_roll,-0.1,0.1)
+        u_pitch = np.clip(u_pitch,-0.1,0.1)
 
         #### UDE 控制 #####################################
         # self.acc_x = self.acc_x + acc_0*control_timestep
@@ -268,9 +271,17 @@ class DSLPIDControl(BaseControl):
         # f_y = - 1/T_ude *(self.acc_y-cur_vel[1])
         # f_z = - 1/T_ude *(self.acc_z-cur_vel[2])
 
-        f_x = 0
-        f_y = 0
-        f_z = 0
+        self.acc_x = self.acc_x + u_roll*control_timestep
+        self.acc_y = self.acc_y + u_pitch*control_timestep
+        self.acc_z = self.acc_z + thrust1*control_timestep
+
+        f_x = - 1/T_ude *(self.acc_x-cur_vel[0])
+        f_y = - 1/T_ude *(self.acc_y-cur_vel[1])
+        f_z = - 1/T_ude *(self.acc_z-cur_vel[2])
+
+        # f_x = 0
+        # f_y = 0
+        # f_z = 0
 
         
         thrust1 = self.GRAVITY + self.GRAVITY/9.8*(thrust1)
@@ -280,7 +291,7 @@ class DSLPIDControl(BaseControl):
         theta_des_dd = 1/9.8*(acc_0-f_x) 
 
         # target_euler = np.array([phi_des_dd,theta_des_dd,0. ])
-        target_euler = np.array([-u_pitch,u_roll,0. ])
+        target_euler = np.array([-1/5*u_pitch,1/5*u_roll,0. ])
 
 
         self.last_pos_e = [pos_e[0],pos_e[1],pos_e[2]]
@@ -409,7 +420,7 @@ class DSLPIDControl(BaseControl):
         if self.compute_done == True:
             c=1
         reward = - (c_p * np.linalg.norm(self.reward_pos) + c_v * np.linalg.norm(self.reward_vel)+ c_rpy * np.linalg.norm(self.rpy)+ c_rpy * np.linalg.norm((self.reward_rpy)+c))
-        print(reward,'reward')
+        # print(reward,'reward')
         return reward
     ################################################################################
 
