@@ -36,7 +36,7 @@ DEFAULT_RECORD_VIDEO = False
 DEFAULT_SIMULATION_FREQ_HZ = 240
 DEFAULT_CONTROL_FREQ_HZ = 48
 DEFAULT_AGGREGATE = True
-DEFAULT_DURATION_SEC = 15
+DEFAULT_DURATION_SEC = 12
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
 
@@ -45,15 +45,35 @@ trajectory_real = []
 
 def Afq (posion):
     Afq = [0,0]
-    obstle = np.array([[-2.1,np.exp(-2.1)+0.7],[2.1,-np.exp(-2.1)-0.7]])
-    for i in np.arange(-2,4,0.1):
-        obstle=np.append(obstle, [[i,np.exp(-i)+1]],axis = 0)
-        obstle=np.append(obstle, [[i,-np.exp(-i)-1]],axis = 0)
+    # obstle = np.array([[-2.1,np.exp(-2.1)+0.7],[2.1,-np.exp(-2.1)-0.7]])
+    # for i in np.arange(-2,4,0.1):
+    #     obstle=np.append(obstle, [[i,np.exp(-i)+1]],axis = 0)
+    #     obstle=np.append(obstle, [[i,-np.exp(-i)-1]],axis = 0)
     
-    for i in np.arange(-4,2,0.1):
-        obstle=np.append(obstle, [[i+8,np.exp(i)+1]],axis = 0)
-        obstle=np.append(obstle, [[i+8,-np.exp(i)-1]],axis = 0)
-        
+    # for i in np.arange(-4,2,0.1):
+    #     obstle=np.append(obstle, [[i+8,np.exp(i)+1]],axis = 0)
+    #     obstle=np.append(obstle, [[i+8,-np.exp(i)-1]],axis = 0)
+    
+    obstle = np.array([[-0,1.5],[-0,-1.5]])
+    for i in np.arange(0,1,0.1):
+        obstle=np.append(obstle, [[0,-2.5+i],[0,2.5-i]],axis = 0)
+
+    for i in np.arange(0.1,2,0.1):
+        obstle=np.append(obstle, [[i,1.5],[i,-1.5]],axis = 0)
+
+    for i in np.arange(2,2.5,0.1):
+        obstle=np.append(obstle, [[2,-i+0.5],[2,i-0.5]],axis = 0)
+
+    for i in np.arange(2.1,6,0.1):
+        obstle=np.append(obstle, [[i,2],[i,-2]],axis = 0)
+
+    for i in np.arange(4.1,4.8,0.1):
+        obstle=np.append(obstle, [[6,i-2.8],[6,-i+2.8]],axis = 0)
+
+    for i in np.arange(6,10,0.1):
+        obstle=np.append(obstle, [[i,1.2],[i,-1.2]],axis = 0)
+
+    
 
     # obstle = np.array([
     #                 [0,-1.5],[0,1.5]
@@ -71,7 +91,7 @@ def Afq (posion):
     
     return -1*Afq
 
-def Afqformation (posion1,posion2,posion3,posion4):
+def Afqavoid (posion1,posion2,posion3,posion4):
     
     drones = np.array([
                        posion1,posion2,posion3,posion4
@@ -82,7 +102,7 @@ def Afqformation (posion1,posion2,posion3,posion4):
     Afqformation2 = [0,0]
     Afqformation3 = [0,0]
     sigma4 = 1
-    Ck = 0.5
+    Ck = 0.1
 
     for i in range(len(drones)):
         if i != 0:
@@ -122,9 +142,15 @@ def Afqformation (posion1,posion2,posion3,posion4):
         
             Afqformation3 = Afqformation3 + V_34
     
-    # return Afqformation,Afqformation1,Afqformation2,Afqformation3
-    return [0,0],[0,0],[0,0],[0,0]
+    return Afqformation,Afqformation1,Afqformation2,Afqformation3
+    # return [[0,0],[0,0],[0,0],[0,0]]
 
+def Afqformation (r,r_d):
+    r = np.array([r])
+    r_d = np.array([r_d])
+    A = 0.1
+    V_1 = A*(r_d - r)
+    return V_1
 
 def run(
         drone=DEFAULT_DRONE, 
@@ -139,7 +165,7 @@ def run(
         colab=DEFAULT_COLAB
     ):
     #### Initialize the simulation #############################
-    INIT_XYZS = np.array([[-3.0, 0.0, 0.8],[-5.0, 0.0, 0.8],[-4.0, 1.1, 0.8],[-4.0, -1.1, 0.8]])
+    INIT_XYZS = np.array([[-3.0, 0.0, 0.8],[-5.0, 0.0, 0.8],[-4.0, 1.5, 0.8],[-4.0, -1.5, 0.8]])
     # print(INIT_XYZS[0, 2],INIT_XYZS[1, 2],'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
     AGGR_PHY_STEPS = int(simulation_freq_hz/control_freq_hz) if aggregate else 1
     env = CtrlAviary(drone_model=drone,
@@ -199,33 +225,45 @@ def run(
             # INIT_XYZS = np.array([[-1, 0, 1],[-3, 0, 1],[-2.0, 1, 1],[-2.0, -1, 1]]) 
             j=j+1
             # print('jjjjjjjjjjjjjjjjjjjj:',i,CTRL_EVERY_N_STEPS)
-            A = Afqformation ([1,0],[-1,0],[0,1],[0,-1])
-            # print(A[0])
-            Afq1 = Afq([obs[str(0)][str("state")][0],obs[str(0)][str("state")][1]]) 
-            target_pos1 = [-1+1*(i/240)-Afq1[0]+A[0][0],0.0-Afq1[1]+A[0][1],0.8]
+            A = Afqavoid ([1,0],[-1,0],[0,1],[0,-1])
+            A1 = [[0,0]]
+            Afq1 = Afq([obs[str(0)][str("state")][0],obs[str(0)][str("state")][1]])
+             
+            target_pos1 = [-1+1*(i/240),0.0,0.8]
+            # target_pos1 = [obs[str(0)][str("state")][0],obs[str(0)][str("state")][1],0.8]
             action[str(0)], _, _ = ctrl1[0].computeControlFromState(control_timestep=CTRL_EVERY_N_STEPS*env.TIMESTEP,
                                                                 state=obs[str(0)]["state"],
                                                                 target_pos=target_pos1,
+                                                                target_vel=np.array([0.7-Afq1[0]+A[0][0]+A1[0][0],-Afq1[1]+A[0][1]+A1[0][1],0]),
                                                                 ude=None)    
             Afq2 = Afq([obs[str(1)][str("state")][0],obs[str(1)][str("state")][1]])
-            target_pos2 = [-3+1*(i/240)-Afq2[0]+A[1][0],0.0-Afq2[1]+A[1][1],0.8]
+            A2 = Afqformation([obs[str(1)][str("state")][0],obs[str(1)][str("state")][1]],[obs[str(0)][str("state")][0]-2,obs[str(0)][str("state")][1]])
+            target_pos2 = [-3+1*(i/240),0.0,0.8]
+            # target_pos2 = [obs[str(1)][str("state")][0],obs[str(1)][str("state")][1],0.8]
             ### 下方无人机的控制器 
             action[str(1)], _, _ = ctrl2[0].computeControlFromState(control_timestep=CTRL_EVERY_N_STEPS*env.TIMESTEP,
                                                                 state=obs[str(1)]["state"],
                                                                 target_pos=target_pos2,
+                                                                target_vel=np.array([0.7-Afq2[0]+A[1][0]+A2[0][0],-Afq2[1]+A[1][1]+A2[0][1],0]),
                                                                 ude=None) 
             Afq3 = Afq([obs[str(2)][str("state")][0],obs[str(2)][str("state")][1]])
-            target_pos3 = [-2.0+1*(i/240)-Afq3[0]+A[2][0],1.1-Afq3[1]+A[2][1],0.8]
+            A3 = Afqformation([obs[str(2)][str("state")][0],obs[str(2)][str("state")][1]],[obs[str(0)][str("state")][0]-1,obs[str(0)][str("state")][1]+1.5])
+            target_pos3 = [-2+1*(i/240),1.5,0.8]
+            # target_pos3 = [obs[str(2)][str("state")][0],obs[str(2)][str("state")][1],0.8]
             action[str(2)], _, _ = ctrl3[0].computeControlFromState(control_timestep=CTRL_EVERY_N_STEPS*env.TIMESTEP,
                                                                 state=obs[str(2)]["state"],
                                                                 target_pos=target_pos3,
+                                                                target_vel=np.array([0.7-Afq3[0]+A[2][0]+A3[0][0],-Afq3[1]+A[2][1]+A3[0][1],0]),
                                                                 ude=None)
             
             Afq4 = Afq([obs[str(3)][str("state")][0],obs[str(3)][str("state")][1]])
-            target_pos4 = [-2.0+1*(i/240)-Afq4[0]+A[3][0],-1.1-Afq4[1]+A[3][1],0.8]
+            A4 = Afqformation([obs[str(3)][str("state")][0],obs[str(3)][str("state")][1]],[obs[str(0)][str("state")][0]-1,obs[str(0)][str("state")][1]-1.5])
+            target_pos4 = [-2+1*(i/240),-1.5,0.8]
+            # target_pos4 = [obs[str(3)][str("state")][0],obs[str(3)][str("state")][1],0.8]
             action[str(3)], _, _ = ctrl4[0].computeControlFromState(control_timestep=CTRL_EVERY_N_STEPS*env.TIMESTEP,
                                                                 state=obs[str(3)]["state"],
                                                                 target_pos=target_pos4,
+                                                                target_vel=np.array([0.7-Afq4[0]+A[3][0]+A4[0][0],-Afq4[1]+A[3][1]+A4[0][1],0]),
                                                                 ude=None)
             
             # trajectory_des.append(np.array([target_pos1[0],target_pos1[1],target_pos2[0],target_pos2[1],target_pos3[0],target_pos3[1],target_pos4[0],target_pos4[1]]))
@@ -294,9 +332,9 @@ def run(
     # plt.plot(time1,trajectory_real1[:,4]-trajectory_des1[:,4],color='g',linestyle='-.',linewidth=1,label='agent3')
     # plt.plot(time1,trajectory_real1[:,6]-trajectory_des1[:,6],color='r',linestyle='-.',linewidth=1,label='agent4')
 
-    INIT_XYZ = np.array([[-3.0, 0.0, 0.8],[-4.0, 1.1, 0.8],[-5.0, 0.0, 0.8],[-4.0, -1.1, 0.8],[-3.0, 0.0, 0.8]])    
+    INIT_XYZ = np.array([[-3.0, 0.0, 0.8],[-4.0, 1.5, 0.8],[-5.0, 0.0, 0.8],[-4.0, -1.5, 0.8],[-3.0, 0.0, 0.8]])    
     # INIT_XYZZ = np.array([[-3.0, 0.0, 0.8],[-5.0, 0.0, 0.8],[-4.0, 1, 0.8],[-4.0, -1, 0.8]])
-    k = 150
+    k = 200
     j = len(trajectory_real1)-1
     XYZ =  np.array([[trajectory_real1[:,0][k],trajectory_real1[:,1][k]],[trajectory_real1[:,4][k],trajectory_real1[:,5][k]],[trajectory_real1[:,2][k],trajectory_real1[:,3][k]],[trajectory_real1[:,6][k],trajectory_real1[:,7][k]],[trajectory_real1[:,0][k],trajectory_real1[:,1][k]]])
     XYZ1 =  np.array([[trajectory_real1[:,0][j],trajectory_real1[:,1][j]],[trajectory_real1[:,4][j],trajectory_real1[:,5][j]],[trajectory_real1[:,2][j],trajectory_real1[:,3][j]],[trajectory_real1[:,6][j],trajectory_real1[:,7][j]],[trajectory_real1[:,0][j],trajectory_real1[:,1][j]]])
@@ -320,14 +358,37 @@ def run(
     plt.scatter(XYZ1[:,0][2],XYZ1[:,1][2],color='y',s=50)
     plt.scatter(XYZ1[:,0][3],XYZ1[:,1][3],color='r',s=50)
 
-    obstle = np.array([[2.1,-np.exp(-2.1)-0.7]])
-    for i in np.arange(-2,4,0.1):
-        obstle=np.append(obstle, [[i,np.exp(-i)+0.7]],axis = 0)
-        obstle=np.append(obstle, [[i,-np.exp(-i)-0.7]],axis = 0)
+    # obstle = np.array([[2.1,-np.exp(-2.1)-0.7]])
+    # for i in np.arange(-2,4,0.1):
+    #     obstle=np.append(obstle, [[i,np.exp(-i)+0.7]],axis = 0)
+    #     obstle=np.append(obstle, [[i,-np.exp(-i)-0.7]],axis = 0)
 
-    for i in np.arange(-4,2,0.1):
-        obstle=np.append(obstle, [[i+8,np.exp(i)+0.7]],axis = 0)
-        obstle=np.append(obstle, [[i+8,-np.exp(i)-0.7]],axis = 0)
+    # for i in np.arange(-4,2,0.1):
+    #     obstle=np.append(obstle, [[i+8,np.exp(i)+0.7]],axis = 0)
+    #     obstle=np.append(obstle, [[i+8,-np.exp(i)-0.7]],axis = 0)
+
+    obstle = np.array([[-0,1.5],[-0,-1.5]])
+    for i in np.arange(0,1,0.1):
+        obstle=np.append(obstle, [[0,-2.5+i],[0,2.5-i]],axis = 0)
+
+    for i in np.arange(0.1,2,0.1):
+        obstle=np.append(obstle, [[i,1.5],[i,-1.5]],axis = 0)
+
+    for i in np.arange(2,2.5,0.1):
+        obstle=np.append(obstle, [[2,-i+0.5],[2,i-0.5]],axis = 0)
+
+    for i in np.arange(2.1,6,0.1):
+        obstle=np.append(obstle, [[i,2],[i,-2]],axis = 0)
+
+    for i in np.arange(4.1,4.8,0.1):
+        obstle=np.append(obstle, [[6,i-2.8],[6,-i+2.8]],axis = 0)
+
+    for i in np.arange(6,10,0.1):
+        obstle=np.append(obstle, [[i,1.2],[i,-1.2]],axis = 0)
+
+    
+
+    
 
     for f in range(len(obstle)):
         plt.scatter(obstle[:,0][f],obstle[:,1][f],color='black',)
@@ -355,12 +416,15 @@ if __name__ == "__main__":
     parser.add_argument('--output_folder',     default=DEFAULT_OUTPUT_FOLDER, type=str,           help='Folder where to save logs (default: "results")', metavar='')
     parser.add_argument('--colab',              default=DEFAULT_COLAB, type=bool,           help='Whether example is being run by a notebook (default: "False")', metavar='')
     ARGS = parser.parse_args()
-    # obstle = np.array([[3,-0.5],[3,0.5],[2,-0.5],[2,0.5],[2.25,0.5], [2.25,-0.5],[2.5,-0.5],[2.5,0.5],[2.75,-0.5],[2.75,0.5],\
-    #                    [-0.5,-0.5],[-0.5,0.5],[-0.25,-0.5],[-0.25,0.5],[0,0.5], [0,-0.5],[0.25,-0.5],[0.25,0.5],[0.5,-0.5],[0.5,0.5],\
-    #                    [0.75,-0.75],[1,-0.75],[1.25,-0.75],[1.5,-0.75],[1.75,-0.75],[0.75,0.75],[1,0.75],[1.25,0.75],[1.5,0.75], [1.75,0.75]\
-    #                    ])
-    # for f in range(len(obstle)):
-    #     plt.scatter(obstle[:,0][f],obstle[:,1][f],color='black')
+
+
+    
+
+   
+    
+    # plt.legend()
+    # plt.grid(alpha=0.1)
+    # plt.show()
  
     
     run(**vars(ARGS))
