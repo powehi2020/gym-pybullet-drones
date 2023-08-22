@@ -5,11 +5,12 @@ from scipy.spatial.transform import Rotation
 import random
 
 from gym_pybullet_drones.control.BaseControl import BaseControl
+from gym_pybullet_drones.control.drone_controller import drone_controller
 from gym_pybullet_drones.utils.enums import DroneModel
 import time
 
 '''
-ude control
+cf control
 '''
 
 class DSLPIDControl(BaseControl):
@@ -82,12 +83,15 @@ class DSLPIDControl(BaseControl):
         super().reset()
         #### Store the last roll, pitch, and yaw ###################
         self.last_rpy = np.zeros(3)
+        self.angle_acc_e = np.zeros(3)
         #### Initialized PID control variables #####################
         self.last_pos_e = np.zeros(3)
+        self.last_pos_de = np.zeros(3)
+        self.last_vel_e = np.zeros(3)
         self.integral_pos_e = np.zeros(3)
         self.last_rpy_e = np.zeros(3)
         self.integral_rpy_e = np.zeros(3)
-
+        # rpy_rates_e = target_rpy_rates - (cur_rpy - self.last_rpy)/control_timestep
         ####ude
         self.integral_rpy = np.zeros(3)
         self.integral_u = np.zeros(3)
@@ -142,6 +146,7 @@ class DSLPIDControl(BaseControl):
 
         """
         self.control_counter += 1
+
         thrust, computed_target_rpy, pos_e = self._dslPIDPositionControl(control_timestep,
                                                                          cur_pos,
                                                                          cur_quat,
@@ -200,104 +205,103 @@ class DSLPIDControl(BaseControl):
 
         """
         cur_rotation = np.array(p.getMatrixFromQuaternion(cur_quat)).reshape(3, 3)
-        k_p = [15,15,30]
-        k_d = [10,10,12]
+        
         # target_vel = np.array([0., 0., 0.])
         pos_e = target_pos - cur_pos
         vel_e = target_vel - cur_vel
-        vel_e = np.clip(vel_e,-2,2)
-
+        # vel_e = np.clip(vel_e,-2,2)
         self.reward_pos = pos_e[2]
         self.reward_vel = vel_e[2]
         self.done_pos = cur_pos
-
-        # print(cur_pos,'kk')
-
         self.pos = cur_pos
-        print(cur_pos)
+    
         self.vel = vel_e
 
-        # vel_e =  target_vel - (pos_e -self.integral_u) / control_timestep
-        # self.integral_u = pos_e
-        # A = self.get_action()
-
-        # print(A,'ACTION')
-        
         self.integral_pos_e = self.integral_pos_e + pos_e*control_timestep
         self.integral_pos_e = np.clip(self.integral_pos_e, -2., 2.)
         self.integral_pos_e[2] = np.clip(self.integral_pos_e[2], -0.15, .15)
 
         #### UDE target thrust #####################################
-
+    
+        A = self.get_action()
         # T_ude = A[0]
-        # T_ude = 0.7
+        # print(A,"udeb")
+        T_ude = 2
 
-        acc_0 = k_p[0]*pos_e[0] + k_d[0]*vel_e[0] 
-        acc_1 = k_p[1]*pos_e[1] + k_d[1]*vel_e[1]
-        acc_2 = k_p[2]*pos_e[2] + k_d[2]*vel_e[2]
+        # T_ude_x =A[0]
+        # T_ude_y =A[1]
+        # T_ude_z =A[2]
+        #### 位置控制 #####################################
+        k_p = np.array([[50,50,30]])
+        k_d = np.array([[10,10,0]])
+        pos_de = (pos_e - self.last_pos_de)/control_timestep
+        v_des = k_p*pos_e + k_d*pos_de
+        # print(v_des)
+        self.last_pos_de = pos_e
+    
+        #### 速度控制 #####################################
+        kv_p = np.array([[30,30,15]])
+        kv_d = np.array([[10,10,0]])
+
+        # v_d = v_des+target_vel
+        v_d = v_des+target_vel
+        # v_d = target_vel
+        v_e = v_d - cur_vel 
+
+        v_de = (v_e - self.last_vel_e)/control_timestep
         
-        acc_0 = np.clip(acc_0,-2,2)
-        acc_1 = np.clip(acc_1,-2,2)
-        # acc_2 = np.clip(acc_2,-2,2)
+        u_p = kv_p*v_e + kv_d*v_de
+        
+        u_roll = u_p[0][0]
+        u_pitch = u_p[0][1]
+        thrust1 = u_p[0][2]
 
-        self.acc_x = self.acc_x + acc_0*control_timestep
-        self.acc_y = self.acc_y + acc_1*control_timestep
-        self.acc_z = self.acc_z + acc_2*control_timestep
+        u_roll = np.clip(u_roll,-0.1,0.1)
+        u_pitch = np.clip(u_pitch,-0.1,0.1)
+        self.last_pos_e = pos_e
+        self.last_vel_e = v_e
+        #### UDE 控制 #####################################
+        # self.acc_x = self.acc_x + acc_0*control_timestep
+        # self.acc_y = self.acc_y + acc_1*control_timestep
+        # self.acc_z = self.acc_z + acc_2*control_timestep
 
         # f_x = - 1/T_ude *(self.acc_x-cur_vel[0])
         # f_y = - 1/T_ude *(self.acc_y-cur_vel[1])
         # f_z = - 1/T_ude *(self.acc_z-cur_vel[2])
 
+        self.acc_x = self.acc_x + u_roll*control_timestep
+        self.acc_y = self.acc_y + u_pitch*control_timestep
+        self.acc_z = self.acc_z + thrust1*control_timestep
+
+        # f_x = - 1/T_ude_x *(self.acc_x-cur_vel[0])
+        # f_y = - 1/T_ude_y *(self.acc_y-cur_vel[1])
+        # f_z = - 1/T_ude_z *(self.acc_z-cur_vel[2])
+
         f_x = 0
         f_y = 0
         f_z = 0
 
-        thrust1 = self.GRAVITY + self.GRAVITY/9.8*(acc_2 - f_z)
-        thrust = (math.sqrt(thrust1 / (4*self.KF)) - self.PWM2RPM_CONST) / self.PWM2RPM_SCALE
-        
-        # with open('acc_0.txt','a')as f:
-        #     f.write(str(acc_0))
-        #     f.write('\n')
-
-        phi_des_dd = 1/9.8*(-acc_1+f_y)  
-        theta_des_dd = 1/9.8*(acc_0-f_x) 
-
-        target_euler = np.array([phi_des_dd,theta_des_dd,0. ])
-
-        ## 存取数据/home/lkd/test_data/2023_3_14
-        # with open ('/home/lkd/test_data/'+time.strftime("%Y_%m_%d", time.localtime())+'/x_c.txt','a') as f:
-        #     f.write(str(cur_pos[0]))
-        #     f.write('\n')
+        ############位置控制输出#############
+        thrust1 = self.GRAVITY + self.GRAVITY/9.8*(thrust1- f_z)
+        phi_des = (-u_pitch+f_y)
+        theta_des = (u_roll-f_x)
         
 
-        # with open ('/home/lkd/test_data/'+time.strftime("%Y_%m_%d", time.localtime())+'/y_c.txt','a') as f:
-        #     f.write(str(cur_pos[1]))
-        #     f.write('\n')
-       
-
-        # with open ('/home/lkd/test_data/'+time.strftime("%Y_%m_%d", time.localtime())+'/z_c.txt','a') as f:
-        #     f.write(str(cur_pos[2]))
-        #     f.write('\n')
+        if thrust1 > 0 :
+            thrust = (math.sqrt(thrust1 / (4*self.KF)) - self.PWM2RPM_CONST) / self.PWM2RPM_SCALE
+        else :
+            thrust = 0
+        # phi_des_dd = 1/9.8*(-acc_1+f_y)  
+        # theta_des_dd = 1/9.8*(acc_0-f_x) 
         
-        # with open ('/home/lkd/test_data/'+time.strftime("%Y_%m_%d", time.localtime())+'/x_t.txt','a') as f:
-        #     f.write(str(target_pos[0]))
-        #     f.write('\n')
-
-        # with open ('/home/lkd/test_data/'+time.strftime("%Y_%m_%d", time.localtime())+'/y_t.txt','a') as f:
-        #     f.write(str(target_pos[1]))
-        #     f.write('\n')
-
-        # with open ('/home/lkd/test_data/'+time.strftime("%Y_%m_%d", time.localtime())+'/z_t.txt','a') as f:
-        #     f.write(str(target_pos[2]))
-        #     f.write('\n')
-
+        # target_euler = np.array([phi_des_dd,theta_des_dd,0. ])
+        target_euler = np.array([phi_des,theta_des,0. ])
+        # target_euler = np.array([u_roll-f_x,u_pitch-f_y,0. ])
+        self.target_euler = target_euler
 
         if np.any(np.abs(target_euler) > math.pi):
             print("\n[ERROR] ctrl it", self.control_counter, "in Control._dslPIDPositionControl(), values outside range [-pi,pi]")
-            
-            
-        
-        
+        # print(self.control_counter)
             
         return thrust, target_euler, pos_e
     
@@ -355,31 +359,50 @@ class DSLPIDControl(BaseControl):
         kp_m = np.array([3000,3000,3000])
         kd_m = np.array([300,300,300])
 
-        #### PD target torques ####################################
+        kp_a = np.array([300,300,300])
+        kd_a = np.array([50,50,50])
+
+        #### 角度 ###################################
         
-        torque_x=kp_m[0]*rot_e[0] + kd_m[0]*rpy_rates_e[0]
-        torque_y=kp_m[1]*rot_e[1] + kd_m[1]*rpy_rates_e[1]
-        torque_z=kp_m[2]*rot_e[2] + kd_m[2]*rpy_rates_e[2]
+        rpy_de = (rot_e - self.last_rpy_e)/control_timestep
+        self.last_rpy_e = rot_e
 
-        ####  rl design ####################################
-        #没有用强化学习要注释掉
-        # A = self.get_action()
+        omega_targe = kp_a * rot_e + kd_a*rpy_de
+        
 
-        # T_torque_ude = A[0]
-        # print(A[0])
+        #### 角加速度 ###################################
+        
+        angle_acc_e = omega_targe - (cur_rpy - self.last_rpy)/control_timestep
+        
+        angle_acc_de = (angle_acc_e - self.angle_acc_e)/control_timestep
+        self.angle_acc_e = angle_acc_e
+        torque = kp_m*angle_acc_e + kd_m*angle_acc_de
+    
+        #### UDE design ####################################
+        A = self.get_action()
+        # print(A[0],'udebb')
 
-        #### UDE  design ####################################
+        T_torque_ude_1 = A[3]
+        T_torque_ude_2 = A[4]
+        T_torque_ude_3 = A[5]
+        
+
+        # T_torque_ude = 2
+        torque_x = torque[0]
+        torque_y = torque[1]
+        torque_z = torque[2]
+        
         self.torque_x = self.torque_x + torque_x*control_timestep
         self.torque_y = self.torque_y + torque_y*control_timestep
         self.torque_z = self.torque_z + torque_z *control_timestep
         
-        # f_torque_x = 1 / T_torque_ude *(cur_rpy_rates[0]-self.torque_x)
-        # f_torque_y = 1 / T_torque_ude *(cur_rpy_rates[1]-self.torque_y)
-        # f_torque_z = 1 / T_torque_ude *(cur_rpy_rates[2]-self.torque_z)
+        f_torque_x = 1 / T_torque_ude_1 *(cur_rpy_rates[0]-self.torque_x)
+        f_torque_y = 1 / T_torque_ude_2 *(cur_rpy_rates[1]-self.torque_y)
+        f_torque_z = 1 / T_torque_ude_3 *(cur_rpy_rates[2]-self.torque_z)
     
-        f_torque_x = 0
-        f_torque_y = 0
-        f_torque_z = 0
+        # f_torque_x = 0
+        # f_torque_y = 0
+        # f_torque_z = 0
 
 
         target_torques = np.array([torque_x-f_torque_x ,torque_y-f_torque_y,torque_z-f_torque_z])
@@ -405,28 +428,22 @@ class DSLPIDControl(BaseControl):
         c_v = 5e-4
         c_rpy =34e-1
         c = 0
-        if self.compute_done == True:
+        if self.compute_done() == True:
             c=1
         reward = - (c_p * np.linalg.norm(self.reward_pos) + c_v * np.linalg.norm(self.reward_vel)+ c_rpy * np.linalg.norm(self.rpy)+ c_rpy * np.linalg.norm((self.reward_rpy)+c))
-        print(reward,'reward')
+        # print(reward,'reward',self.compute_done())
         return reward
     ################################################################################
 
     def compute_done(self):
-        '''compute the reward of the current state'''   
+        # print(self.control_counter,'counter')   
                       
-        
-        if   self.pos[1]<-0.45 or self.pos[1]>0.45 or self.pos[2]<0.1:
-            # print(self.cur_rpy[1])
+        if np.abs(self.target_euler).all() > math.pi or self.pos[2] < 0.2 or self.control_counter > 4096 \
+            or self.pos[1] > 0.15:
             print('done')
-            # print(self.pos[0],'aa')
-            # print(self.pos[1])
-            # print(self.vel[2])
+            self.control_counter = 0
             return True
         else:
-            print(self.pos[0],'aa')
-            print(self.pos[1])
-            print(self.pos[2])
             return False
         
     ################################################################################

@@ -21,6 +21,8 @@ from gym_pybullet_drones.utils.Logger import Logger
 # from gym_pybullet_drones.control.DSLPIDControl_old import DSLPIDControl_old
 from gym_pybullet_drones.control.SimplePIDControl import SimplePIDControl
 from scipy.spatial.transform import Rotation as R
+# from proplot import rc
+
  
 def quaternion2euler(quaternion):
     r = R.from_quat(quaternion)
@@ -31,12 +33,12 @@ def quaternion2euler(quaternion):
 
 
 DEFAULT_DRONE = DroneModel('cf2x')
-DEFAULT_GUI = True
+DEFAULT_GUI = False
 DEFAULT_RECORD_VIDEO = False
 DEFAULT_SIMULATION_FREQ_HZ = 240
 DEFAULT_CONTROL_FREQ_HZ = 48
 DEFAULT_AGGREGATE = True
-DEFAULT_DURATION_SEC = 15
+DEFAULT_DURATION_SEC = 50
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
 
@@ -73,14 +75,9 @@ def Afq (posion):
     for i in np.arange(6,10,0.1):
         obstle=np.append(obstle, [[i,1.2],[i,-1.2]],axis = 0)
 
-    
-
-    # obstle = np.array([
-    #                 [0,-1.5],[0,1.5]
-    #                 ])
 
     sigma = 1
-    Ck = 0.15
+    Ck = 3.5
     for i in range(len(obstle)):
         Afq_vetor =  posion - obstle[i] 
         Afq_size = np.linalg.norm(Afq_vetor,ord=2) #二范数
@@ -143,15 +140,16 @@ def Afqavoid (posion1,posion2,posion3,posion4):
         
             Afqformation3 = Afqformation3 + V_34
     
-    return Afqformation,Afqformation1,Afqformation2,Afqformation3
+    return -1*Afqformation,-1*Afqformation1,-1*Afqformation2,-1*Afqformation3
     # return [[0,0],[0,0],[0,0],[0,0]]
 
 def Afqformation (r,r_d):
     r = np.array([r])
     r_d = np.array([r_d])
-    A = 0.5
+    A = 1
     V_1 = A*(r_d - r)
     return V_1
+    # return [[0,0]]
 
 def run(
         drone=DEFAULT_DRONE, 
@@ -166,7 +164,7 @@ def run(
         colab=DEFAULT_COLAB
     ):
     #### Initialize the simulation #############################
-    INIT_XYZS = np.array([[-3.0, 0.0, 0.8],[-5.0, 0.0, 0.8],[-4.0, 1.5, 0.8],[-4.0, -1.5, 0.8]])
+    INIT_XYZS = np.array([[-3.0, 0.0, 0.5],[-5.0, 0.0, 0.5],[-4.0, 1.5, 0.5],[-4.0, -1.5, 0.5]])
     # print(INIT_XYZS[0, 2],INIT_XYZS[1, 2],'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
     AGGR_PHY_STEPS = int(simulation_freq_hz/control_freq_hz) if aggregate else 1
     env = CtrlAviary(drone_model=drone,
@@ -226,50 +224,76 @@ def run(
             # INIT_XYZS = np.array([[-1, 0, 1],[-3, 0, 1],[-2.0, 1, 1],[-2.0, -1, 1]]) 
             j=j+1
             # print('jjjjjjjjjjjjjjjjjjjj:',i,CTRL_EVERY_N_STEPS)
-            A = Afqavoid ([1,0],[-1,0],[0,1],[0,-1])
+            A = Afqavoid ([0,0],[-2,0],[-1,1.5],[-1,-1.5])
             A1 = [[0,0]]
             Afq1 = Afq([obs[str(0)][str("state")][0],obs[str(0)][str("state")][1]])
              
-            target_pos1 = [-3+1*(i/240),0.0,0.8]
+            
+            p.resetDebugVisualizerCamera(
+        cameraDistance=3,
+        cameraYaw=-90,
+        cameraPitch=-30,
+        cameraTargetPosition=[-8+1*(i/240),0.0,2]
+    )
+            # log_id = p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "robotmove.mp4")
+            target_pos1 = [-3+1*(i/240),0.0,0.5]
             # target_pos1 = [obs[str(0)][str("state")][0],obs[str(0)][str("state")][1],0.8]
             action[str(0)], _, _ = ctrl1[0].computeControlFromState(control_timestep=CTRL_EVERY_N_STEPS*env.TIMESTEP,
                                                                 state=obs[str(0)]["state"],
                                                                 target_pos=target_pos1,
-                                                                target_vel=np.array([0.7-Afq1[0]+A[0][0]+A1[0][0],-Afq1[1]+A[0][1]+A1[0][1],0]),
+                                                                target_vel=np.array([-Afq1[0]+A[0][0]+A1[0][0]+0.2,-Afq1[1]+A[0][1]+A1[0][1],0]),
                                                                 ude=None)    
             Afq2 = Afq([obs[str(1)][str("state")][0],obs[str(1)][str("state")][1]])
             A2 = Afqformation([obs[str(1)][str("state")][0],obs[str(1)][str("state")][1]],[obs[str(0)][str("state")][0]-2,obs[str(0)][str("state")][1]])
-            target_pos2 = [-5+1*(i/240),0.0,0.8]
+            target_pos2 = [-5+1*(i/240),0.0,0.5]
             # target_pos2 = [obs[str(1)][str("state")][0],obs[str(1)][str("state")][1],0.8]
             ### 下方无人机的控制器 
             action[str(1)], _, _ = ctrl2[0].computeControlFromState(control_timestep=CTRL_EVERY_N_STEPS*env.TIMESTEP,
                                                                 state=obs[str(1)]["state"],
                                                                 target_pos=target_pos2,
-                                                                target_vel=np.array([0.7-Afq2[0]+A[1][0]+A2[0][0],-Afq2[1]+A[1][1]+A2[0][1],0]),
+                                                                target_vel=np.array([-Afq2[0]+A[1][0]+A2[0][0]+0.2,-Afq2[1]+A[1][1]+A2[0][1],0]),
                                                                 ude=None) 
             Afq3 = Afq([obs[str(2)][str("state")][0],obs[str(2)][str("state")][1]])
             A3 = Afqformation([obs[str(2)][str("state")][0],obs[str(2)][str("state")][1]],[obs[str(0)][str("state")][0]-1,obs[str(0)][str("state")][1]+1.5])
-            target_pos3 = [-4+1*(i/240),1.5,0.8]
+            target_pos3 = [-4+1*(i/240),1.5,0.5]
             # target_pos3 = [obs[str(2)][str("state")][0],obs[str(2)][str("state")][1],0.8]
             action[str(2)], _, _ = ctrl3[0].computeControlFromState(control_timestep=CTRL_EVERY_N_STEPS*env.TIMESTEP,
                                                                 state=obs[str(2)]["state"],
                                                                 target_pos=target_pos3,
-                                                                target_vel=np.array([0.7-Afq3[0]+A[2][0]+A3[0][0],-Afq3[1]+A[2][1]+A3[0][1],0]),
+                                                                target_vel=np.array([-Afq3[0]+A[2][0]+A3[0][0]+0.2,-Afq3[1]+A[2][1]+A3[0][1],0]),
                                                                 ude=None)
             
             Afq4 = Afq([obs[str(3)][str("state")][0],obs[str(3)][str("state")][1]])
             A4 = Afqformation([obs[str(3)][str("state")][0],obs[str(3)][str("state")][1]],[obs[str(0)][str("state")][0]-1,obs[str(0)][str("state")][1]-1.5])
-            target_pos4 = [-4+1*(i/240),-1.5,0.8]
+            target_pos4 = [-4+1*(i/240),-1.5,0.5]
             # target_pos4 = [obs[str(3)][str("state")][0],obs[str(3)][str("state")][1],0.8]
             action[str(3)], _, _ = ctrl4[0].computeControlFromState(control_timestep=CTRL_EVERY_N_STEPS*env.TIMESTEP,
                                                                 state=obs[str(3)]["state"],
                                                                 target_pos=target_pos4,
-                                                                target_vel=np.array([0.7-Afq4[0]+A[3][0]+A4[0][0],-Afq4[1]+A[3][1]+A4[0][1],0]),
+                                                                target_vel=np.array([-Afq4[0]+A[3][0]+A4[0][0]+0.2,-Afq4[1]+A[3][1]+A4[0][1],0]),
                                                                 ude=None)
             
             # trajectory_des.append(np.array([target_pos1[0],target_pos1[1],target_pos2[0],target_pos2[1],target_pos3[0],target_pos3[1],target_pos4[0],target_pos4[1]]))
-            trajectory_des.append([target_pos1[0],target_pos1[1],target_pos2[0],target_pos2[1],target_pos3[0],target_pos3[1],target_pos4[0],target_pos4[1]])
-            trajectory_real.append([obs[str(0)][str("state")][0],obs[str(0)][str("state")][1],obs[str(1)][str("state")][0],obs[str(1)][str("state")][1],obs[str(2)][str("state")][0],obs[str(2)][str("state")][1],obs[str(3)][str("state")][0],obs[str(3)][str("state")][1]])
+            trajectory_des.append([obs[str(1)][str("state")][0]+2,obs[str(1)][str("state")][1],
+                                   obs[str(0)][str("state")][0]-2,obs[str(0)][str("state")][1],
+                                   obs[str(0)][str("state")][0]-1,obs[str(0)][str("state")][1]+1.5,
+                                   obs[str(0)][str("state")][0]-1,obs[str(0)][str("state")][1]-1.5,
+                                   target_pos1[2],target_pos2[2],target_pos3[2],target_pos4[2]
+                                   ])
+            trajectory_real.append([obs[str(0)][str("state")][0],obs[str(0)][str("state")][1],
+                                    obs[str(1)][str("state")][0],obs[str(1)][str("state")][1],
+                                    obs[str(2)][str("state")][0],obs[str(2)][str("state")][1],
+                                    obs[str(3)][str("state")][0],obs[str(3)][str("state")][1],
+
+                                    obs[str(0)][str("state")][7],obs[str(0)][str("state")][8],obs[str(0)][str("state")][9],
+                                    obs[str(1)][str("state")][7],obs[str(1)][str("state")][8],obs[str(1)][str("state")][9],
+                                    obs[str(2)][str("state")][7],obs[str(2)][str("state")][8],obs[str(2)][str("state")][9],
+                                    obs[str(3)][str("state")][7],obs[str(3)][str("state")][8],obs[str(3)][str("state")][9],
+                                    obs[str(0)][str("state")][2],
+                                    obs[str(1)][str("state")][2],
+                                    obs[str(2)][str("state")][2],
+                                    obs[str(3)][str("state")][2]
+                                    ])
             
             # print('pppp:',trajectory_real[i],obs[str(0)][str("state")][1])
             #### Go to the next way point and loop #####################
@@ -293,6 +317,7 @@ def run(
             sync(i, START, env.TIMESTEP)
 
     #### Close the environment #################################
+    # p.stopStateLogging(log_id)
     env.close()
 
     #### Save the simulation results ###########################
@@ -305,9 +330,13 @@ def run(
     trajectory_des1 = np.array(trajectory_des)
     trajectory_real1 = np.array(trajectory_real)
     
+    np.savetxt('ccsicc/trajectory_des_pd.txt',trajectory_des1,fmt='%0.8f')
+    np.savetxt('ccsicc/trajectory_real_pd.txt',trajectory_real1,fmt='%0.8f')
+
     time1 = [0.01*i for i in range(len(trajectory_des))]
-    plt.subplot(2, 1, 1)
-    # plt.figure(figsize=(12, 6))
+    plt.subplot(4,1,1)
+    # plt.subplot(figsize=(12, 6))
+    # plt.figure()
     plt.plot(trajectory_real1[:,0],trajectory_real1[:,1],color='b',linestyle='-.',linewidth=1,label='UAV1') 
     plt.plot(trajectory_real1[:,2],trajectory_real1[:,3],color='y',linestyle='-.',linewidth=1,label='UAV2')
     plt.plot(trajectory_real1[:,4],trajectory_real1[:,5],color='g',linestyle='-.',linewidth=1,label='UAV3')
@@ -317,11 +346,11 @@ def run(
 
     INIT_XYZ = np.array([[-3.0, 0.0, 0.8],[-4.0, 1.5, 0.8],[-5.0, 0.0, 0.8],[-4.0, -1.5, 0.8],[-3.0, 0.0, 0.8]])    
     # INIT_XYZZ = np.array([[-3.0, 0.0, 0.8],[-5.0, 0.0, 0.8],[-4.0, 1, 0.8],[-4.0, -1, 0.8]])
-    k = 200
+    k = 400
     j = len(trajectory_real1)-1
     XYZ =  np.array([[trajectory_real1[:,0][k],trajectory_real1[:,1][k]],[trajectory_real1[:,4][k],trajectory_real1[:,5][k]],[trajectory_real1[:,2][k],trajectory_real1[:,3][k]],[trajectory_real1[:,6][k],trajectory_real1[:,7][k]],[trajectory_real1[:,0][k],trajectory_real1[:,1][k]]])
     XYZ1 =  np.array([[trajectory_real1[:,0][j],trajectory_real1[:,1][j]],[trajectory_real1[:,4][j],trajectory_real1[:,5][j]],[trajectory_real1[:,2][j],trajectory_real1[:,3][j]],[trajectory_real1[:,6][j],trajectory_real1[:,7][j]],[trajectory_real1[:,0][j],trajectory_real1[:,1][j]]])
-   
+    # plt.figure(figsize=(14,7))
     plt.plot(INIT_XYZ[:,0],INIT_XYZ[:,1],color='gray',linestyle='-.',linewidth=1) 
     plt.plot(XYZ[:,0],XYZ[:,1],color='gray',linestyle='-.',linewidth=1)
     plt.plot(XYZ1[:,0],XYZ1[:,1],color='gray',linestyle='-.',linewidth=1)
@@ -346,48 +375,120 @@ def run(
     for i in np.arange(0,1,0.02):
         obstle=np.append(obstle, [[0,-2.5+i],[0,2.5-i]],axis = 0)
 
-    for i in np.arange(0.1,2,0.2):
+    for i in np.arange(0,2,0.02):
         obstle=np.append(obstle, [[i,1.5],[i,-1.5]],axis = 0)
 
-    for i in np.arange(2,2.5,0.2):
+    for i in np.arange(2,2.5,0.02):
         obstle=np.append(obstle, [[2,-i+0.5],[2,i-0.5]],axis = 0)
 
-    for i in np.arange(2.1,6,0.2):
+    for i in np.arange(2,6,0.02):
         obstle=np.append(obstle, [[i,2],[i,-2]],axis = 0)
 
-    for i in np.arange(4.1,4.8,0.2):
+    for i in np.arange(4,4.8,0.02):
         obstle=np.append(obstle, [[6,i-2.8],[6,-i+2.8]],axis = 0)
 
-    for i in np.arange(6,10,0.2):
+    for i in np.arange(6,10,0.02):
         obstle=np.append(obstle, [[i,1.2],[i,-1.2]],axis = 0)
 
-    
-
-    
-    # plt.plot(obstle[:,0],obstle[:,1],color='black')
+   
     for f in range(len(obstle)):
         plt.scatter(obstle[:,0][f],obstle[:,1][f],color='black',)
+
+    plt.xlabel('x [m]')
+    plt.ylabel('y [m]')
     plt.legend()
     plt.grid(alpha=0.1)
   
-    
-    plt.subplot(2, 2, 3)
-    plt.plot(time1,trajectory_real1[:,1]-trajectory_des1[:,1],color='b',linestyle='-.',linewidth=1,label='UAV1') 
-    plt.plot(time1,trajectory_real1[:,3]-trajectory_des1[:,3],color='y',linestyle='-.',linewidth=1,label='UAV2')
-    plt.plot(time1,trajectory_real1[:,5]-trajectory_des1[:,5],color='g',linestyle='-.',linewidth=1,label='UAV3')
-    plt.plot(time1,trajectory_real1[:,7]-trajectory_des1[:,7],color='r',linestyle='-.',linewidth=1,label='UAV4')
-    plt.legend()
-    plt.grid(alpha=0.1)
+    ### x_erro
+    # plt.subplot(3, 2, 1)
+    # plt.plot(time1,trajectory_real1[:,0]-trajectory_des1[:,0],color='b',linestyle='-.',linewidth=1,label='UAV1') 
+    # plt.plot(time1,trajectory_real1[:,2]-trajectory_des1[:,2],color='y',linestyle='-.',linewidth=1,label='UAV2')
+    # plt.plot(time1,trajectory_real1[:,4]-trajectory_des1[:,4],color='g',linestyle='-.',linewidth=1,label='UAV3')
+    # plt.plot(time1,trajectory_real1[:,6]-trajectory_des1[:,6],color='r',linestyle='-.',linewidth=1,label='UAV4')
+    # plt.xlabel('time[s]')
+    # plt.ylabel('x_erro [m]')
 
-    plt.subplot(2, 2, 4)
-    plt.plot(time1,trajectory_real1[:,0]-trajectory_des1[:,0],color='b',linestyle='-.',linewidth=1,label='UAV1') 
-    plt.plot(time1,trajectory_real1[:,2]-trajectory_des1[:,2],color='y',linestyle='-.',linewidth=1,label='UAV2')
-    plt.plot(time1,trajectory_real1[:,4]-trajectory_des1[:,4],color='g',linestyle='-.',linewidth=1,label='UAV3')
-    plt.plot(time1,trajectory_real1[:,6]-trajectory_des1[:,6],color='r',linestyle='-.',linewidth=1,label='UAV4')
-    plt.legend()
-    plt.grid(alpha=0.1)
+    # plt.xlim((0,0.01*len(time1)))
+    # plt.ylim((-1.2,1.2))
+    # plt.legend(loc = 'upper left')
+    # plt.grid(alpha=0.1)
+    # plt.xticks(fontsize=10)
+    # plt.yticks(fontsize=10)  
+    # # plt.xlabel(fontsize=20)
+    # # plt.ylabel( fontsize=20) 
+
+    # ## y_erro
+    # plt.subplot(3, 2, 2)
+    # plt.plot(time1,trajectory_real1[:,1]-trajectory_des1[:,1],color='b',linestyle='-.',linewidth=1,label='UAV1') 
+    # plt.plot(time1,trajectory_real1[:,3]-trajectory_des1[:,3],color='y',linestyle='-.',linewidth=1,label='UAV2')
+    # plt.plot(time1,trajectory_real1[:,5]-trajectory_des1[:,5],color='g',linestyle='-.',linewidth=1,label='UAV3')
+    # plt.plot(time1,trajectory_real1[:,7]-trajectory_des1[:,7],color='r',linestyle='-.',linewidth=1,label='UAV4')
+    # plt.xlabel('time [s]')
+    # plt.ylabel('y_erro [m]')
+    # plt.xlim((0,0.01*len(time1)))
+    # plt.ylim((-1.2,1.2))
+    # # plt.legend(loc = 'upper left')
+    # plt.grid(alpha=0.1)
+
+    # ## z_erro
+    # plt.subplot(3, 2, 3)
+    # plt.plot(time1,trajectory_real1[:,20]-trajectory_des1[:,8],color='b',linestyle='-.',linewidth=1,label='UAV1') 
+    # plt.plot(time1,trajectory_real1[:,21]-trajectory_des1[:,9],color='y',linestyle='-.',linewidth=1,label='UAV2')
+    # plt.plot(time1,trajectory_real1[:,22]-trajectory_des1[:,10],color='g',linestyle='-.',linewidth=1,label='UAV3')
+    # plt.plot(time1,trajectory_real1[:,23]-trajectory_des1[:,11],color='r',linestyle='-.',linewidth=1,label='UAV4')
+    # plt.xlabel('time[s]')
+    # plt.ylabel('z_erro [m]')
+    # plt.xlim((0,0.01*len(time1)))
+    # plt.grid(alpha=0.1)
+    # # plt.legend(loc = 'upper left')
+
+    # # plt.axes([0.6,0.1,0.2,0.2])  
+    # # plt.plot(time1[200:],trajectory_real1[200:,20]-trajectory_des1[200:,8],'y')
+    # # plt.title('little axes2')
+    # # # plt.ylim((-1,1))
+    # # # plt.legend()
+    # # plt.grid(alpha=0.1)
     
+
+    # plt.subplot(3, 2, 4)
+    # plt.plot(time1,trajectory_real1[:,8],color='b',linestyle='-.',linewidth=1,label='UAV1') 
+    # plt.plot(time1,trajectory_real1[:,11],color='y',linestyle='-.',linewidth=1,label='UAV2')
+    # plt.plot(time1,trajectory_real1[:,14],color='g',linestyle='-.',linewidth=1,label='UAV3')
+    # plt.plot(time1,trajectory_real1[:,17],color='r',linestyle='-.',linewidth=1,label='UAV4')
+    # plt.xlabel('time[s]')
+    # plt.ylabel('roll [degree]')
+    # plt.xlim((0,0.01*len(time1)))
+    # plt.ylim((-0.15,0.15))
+    # # plt.legend(loc = 'upper left')
+    # plt.grid(alpha=0.1)
+
+    # plt.subplot(3, 2, 5)
+    # plt.plot(time1,trajectory_real1[:,9],color='b',linestyle='-.',linewidth=1,label='UAV1') 
+    # plt.plot(time1,trajectory_real1[:,12],color='y',linestyle='-.',linewidth=1,label='UAV2')
+    # plt.plot(time1,trajectory_real1[:,15],color='g',linestyle='-.',linewidth=1,label='UAV3')
+    # plt.plot(time1,trajectory_real1[:,18],color='r',linestyle='-.',linewidth=1,label='UAV4')
+    # plt.xlabel('time[s]')
+    # plt.ylabel('pitch [degree]')
+    # plt.xlim((0,0.01*len(time1)))
+    # plt.ylim((-0.15,0.15))
+    # # plt.legend(loc = 'upper left')
+    # plt.grid(alpha=0.1)
+
+    # plt.subplot(3, 2, 6)
+    # plt.plot(time1,trajectory_real1[:,10],color='b',linestyle='-.',linewidth=1,label='UAV1') 
+    # plt.plot(time1,trajectory_real1[:,13],color='y',linestyle='-.',linewidth=1,label='UAV2')
+    # plt.plot(time1,trajectory_real1[:,16],color='g',linestyle='-.',linewidth=1,label='UAV3')
+    # plt.plot(time1,trajectory_real1[:,19],color='r',linestyle='-.',linewidth=1,label='UAV4')
+    # plt.xlabel('time[s]')
+    # plt.ylabel('yaw [degree]')
+    # plt.xlim((0,0.01*len(time1)))
+    # plt.ylim((-0.15,0.15))
+    # # plt.legend(loc = 'upper left')
+    # plt.grid(alpha=0.1)
+
+
     plt.show()
+    plt.savefig('formation.pdf',dpi =350)
 
 
 if __name__ == "__main__":
@@ -405,15 +506,6 @@ if __name__ == "__main__":
     parser.add_argument('--output_folder',     default=DEFAULT_OUTPUT_FOLDER, type=str,           help='Folder where to save logs (default: "results")', metavar='')
     parser.add_argument('--colab',              default=DEFAULT_COLAB, type=bool,           help='Whether example is being run by a notebook (default: "False")', metavar='')
     ARGS = parser.parse_args()
-
-
-    
-
-   
-    
-    # plt.legend()
-    # plt.grid(alpha=0.1)
-    # plt.show()
  
     
     run(**vars(ARGS))

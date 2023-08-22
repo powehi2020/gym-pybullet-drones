@@ -29,7 +29,7 @@ from gym_pybullet_drones.control.SimplePIDControl import SimplePIDControl
 from gym_pybullet_drones.utils.Logger import Logger
 
 DEFAULT_DRONE = DroneModel("cf2x")
-DEFAULT_GUI = True
+DEFAULT_GUI = False
 DEFAULT_RECORD_VIDEO = False
 DEFAULT_SIMULATION_FREQ_HZ = 240
 DEFAULT_CONTROL_FREQ_HZ = 48
@@ -40,8 +40,6 @@ DEFAULT_COLAB = False
 
 
 class rl_ude (CtrlAviary,gym.Env):
-             
-        
         
     def __init__(self,
             drone=DEFAULT_DRONE, 
@@ -57,10 +55,13 @@ class rl_ude (CtrlAviary,gym.Env):
             render : bool = False
         ):
         self._render = render
+        
         # 定义动作空间
+        #Box(low=np.array([-1.0, -2.0]), high=np.array([2.0, 4.0]), dtype=np.float32)
+        #Box(2,)
         self.action_space = spaces.Box(
-            low=np.array([0.01]),
-            high=np.array([50.]),
+            low=np.array([0.1,0.1,0.1,0.1,0.1,0.1]),
+            high=np.array([10,10,10,10,10,10]),
             dtype=np.float32
             )
         # self.self.PYB_CLIENT = p.connect(p.GUI if self._render else p.DIRECT)
@@ -73,8 +74,8 @@ class rl_ude (CtrlAviary,gym.Env):
                                             dtype=np.float32
                                             )
        
-        #### Initialize the simulation #############################
-        self.INIT_XYZS = np.array([[1, 0, 0.6],[-1, 0 , 1]])#飞机的初始位置x，y，z  random.uniform(0.4,0.8)
+        #### Initialize the simulation #############################random.uniform(0.2,0.8)
+        self.INIT_XYZS = np.array([[1, 0, 0.5],[-1, 0 , 1]])#飞机的初始位置x，y，z  random.uniform(0.4,0.8)
         self.AGGR_PHY_STEPS  = int(simulation_freq_hz/control_freq_hz) if aggregate else 1
         self.env = CtrlAviary(drone_model=drone,
                         num_drones=2,
@@ -129,8 +130,8 @@ class rl_ude (CtrlAviary,gym.Env):
         # p.loadURDF("soccerball.urdf", [0,0,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#足球
         # p.loadURDF("teddy_vhacd.urdf", [0,0,0], p.getQuaternionFromEuler([90,0,0]), physicsClientId=self.PYB_CLIENT)#小熊
 
-        p.loadURDF("cube_no_rotation.urdf", [0.7,-1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#正方体
-        p.loadURDF("cube_no_rotation.urdf", [0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#正方体
+        # p.loadURDF("cube_no_rotation.urdf", [0.7,-1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#正方体
+        # p.loadURDF("cube_no_rotation.urdf", [0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#正方体
 
         
         #### Initialize the controllers ############################
@@ -149,8 +150,8 @@ class rl_ude (CtrlAviary,gym.Env):
     def step (self,act=None):
         #### Step the simulation ###################################
         self.obs, reward, dones, info = self.env.step(self.action)
-        self.state = np.array([self.obs['1']['state'][0],self.obs['1']['state'][1],self.obs['1']['state'][2],self.obs['1']['state'][3],self.obs['1']['state'][4],self.obs['1']['state'][5],self.obs['1']['state'][6],self.obs['1']['state'][7],self.obs['1']['state'][8],self.obs['1']['state'][9],self.obs['1']['state'][10],self.obs['1']['state'][11],self.obs['1']['state'][12],self.obs['1']['state'][13],self.obs['1']['state'][14],self.obs['1']['state'][15],self.obs['1']['state'][16],self.obs['1']['state'][17],self.obs['1']['state'][18],self.obs['1']['state'][19]], dtype=np.float32)
-        ### 下方无人机的控制器    
+        self.state = self.obs[str(0)]["state"]
+        ### 下方无人机的控制器 
         self.action[str(0)], _, _ = self.ctrl[0].computeControlFromState(control_timestep=self.CTRL_EVERY_N_STEPS*self.env.TIMESTEP,
                                                                 state=self.obs[str(0)]["state"],
                                                                 target_pos=np.hstack([self.TARGET_POS[self.wp_counters[0], :], self.INIT_XYZS[0, 2]]),
@@ -186,8 +187,8 @@ class rl_ude (CtrlAviary,gym.Env):
 
         self.obs = self.env.reset()
         self.wp_counters = np.array([0,int(self.NUM_WP/2)])
-        p.loadURDF("cube_no_rotation.urdf", [0.7,-1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#正方体
-        p.loadURDF("cube_no_rotation.urdf", [0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#正方体
+        # p.loadURDF("cube_no_rotation.urdf", [0.7,-1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#正方体
+        # p.loadURDF("cube_no_rotation.urdf", [0.7,1,0], p.getQuaternionFromEuler([0,0,0]), physicsClientId=self.PYB_CLIENT)#正方体
 
         # print(self.obs,'sss')
         return self.obs[str(1)]["state"]
