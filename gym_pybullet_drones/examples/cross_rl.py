@@ -43,7 +43,7 @@ class rl_ude (CtrlAviary,gym.Env):
         
     def __init__(self,
             drone=DEFAULT_DRONE, 
-            gui=True, 
+            gui=False, 
             record_video=DEFAULT_RECORD_VIDEO, 
             simulation_freq_hz=DEFAULT_SIMULATION_FREQ_HZ, 
             control_freq_hz=DEFAULT_CONTROL_FREQ_HZ, 
@@ -60,8 +60,8 @@ class rl_ude (CtrlAviary,gym.Env):
         #Box(low=np.array([-1.0, -2.0]), high=np.array([2.0, 4.0]), dtype=np.float32)
         #Box(2,)
         self.action_space = spaces.Box(
-            low=np.array([0.1,0.1,0.1,0.1,0.1,0.1]),
-            high=np.array([10,10,10,10,10,10]),
+            low=np.array([0.1,0.1,0.1]),
+            high=np.array([5,5,5]),
             dtype=np.float32
             )
         # self.self.PYB_CLIENT = p.connect(p.GUI if self._render else p.DIRECT)
@@ -75,7 +75,7 @@ class rl_ude (CtrlAviary,gym.Env):
                                             )
        
         #### Initialize the simulation #############################random.uniform(0.2,0.8)
-        self.INIT_XYZS = np.array([[1, 0, 0.5],[-1, 0 , 1]])#飞机的初始位置x，y，z  random.uniform(0.4,0.8)
+        self.INIT_XYZS = np.array([[1, 0, random.uniform(0.2,0.7)],[-1, 0 , 1]])#飞机的初始位置x，y，z  random.uniform(0.4,0.8)
         self.AGGR_PHY_STEPS  = int(simulation_freq_hz/control_freq_hz) if aggregate else 1
         self.env = CtrlAviary(drone_model=drone,
                         num_drones=2,

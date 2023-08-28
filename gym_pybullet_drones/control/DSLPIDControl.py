@@ -223,7 +223,7 @@ class DSLPIDControl(BaseControl):
 
         #### UDE target thrust #####################################
     
-        A = self.get_action()
+        # A = self.get_action()
         # T_ude = A[0]
         # print(A,"udeb")
         T_ude = 2
@@ -379,12 +379,12 @@ class DSLPIDControl(BaseControl):
         torque = kp_m*angle_acc_e + kd_m*angle_acc_de
     
         #### UDE design ####################################
-        A = self.get_action()
+        # A = self.get_action()
         # print(A[0],'udebb')
 
-        T_torque_ude_1 = A[3]
-        T_torque_ude_2 = A[4]
-        T_torque_ude_3 = A[5]
+        # T_torque_ude_1 = A[0]
+        # T_torque_ude_2 = A[1]
+        # T_torque_ude_3 = A[2]
         
 
         # T_torque_ude = 2
@@ -396,13 +396,13 @@ class DSLPIDControl(BaseControl):
         self.torque_y = self.torque_y + torque_y*control_timestep
         self.torque_z = self.torque_z + torque_z *control_timestep
         
-        f_torque_x = 1 / T_torque_ude_1 *(cur_rpy_rates[0]-self.torque_x)
-        f_torque_y = 1 / T_torque_ude_2 *(cur_rpy_rates[1]-self.torque_y)
-        f_torque_z = 1 / T_torque_ude_3 *(cur_rpy_rates[2]-self.torque_z)
+        # f_torque_x = 1 / T_torque_ude_1 *(cur_rpy_rates[0]-self.torque_x)
+        # f_torque_y = 1 / T_torque_ude_2 *(cur_rpy_rates[1]-self.torque_y)
+        # f_torque_z = 1 / T_torque_ude_3 *(cur_rpy_rates[2]-self.torque_z)
     
-        # f_torque_x = 0
-        # f_torque_y = 0
-        # f_torque_z = 0
+        f_torque_x = 0
+        f_torque_y = 0
+        f_torque_z = 0
 
 
         target_torques = np.array([torque_x-f_torque_x ,torque_y-f_torque_y,torque_z-f_torque_z])
@@ -417,6 +417,7 @@ class DSLPIDControl(BaseControl):
         # pwm is the motor control signal 
         pwm = thrust + np.dot(self.MIXER_MATRIX, target_torques)
         pwm = np.clip(pwm, self.MIN_PWM, self.MAX_PWM)
+        
         return self.PWM2RPM_SCALE * pwm + self.PWM2RPM_CONST
     
     ################################################################################
@@ -466,6 +467,8 @@ class DSLPIDControl(BaseControl):
         """
         DIM = len(np.array(thrust))
         pwm = np.clip((np.sqrt(np.array(thrust)/(self.KF*(4/DIM)))-self.PWM2RPM_CONST)/self.PWM2RPM_SCALE, self.MIN_PWM, self.MAX_PWM)
+
+        print('pwm:',pwm)
         if DIM in [1, 4]:
             return np.repeat(pwm, 4/DIM)
         elif DIM==2:

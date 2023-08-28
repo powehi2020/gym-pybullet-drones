@@ -11,11 +11,11 @@ Step = 50000
 env = rl_ude (render=False)
 
 model = PPO("MlpPolicy", env, verbose=1, tensorboard_log="./ppo/")
-# model.learn(total_timesteps=10000000)
-# model.save("ppo_cartpole4")
+model.learn(total_timesteps=10000000)
+model.save("ppo_cartpole4")
 del model # remove to demonstrate saving and loading
 
-model = PPO.load("/home/lkd/Documents/GitHub/gym-pybullet-drones/ppo_cartpole4.zip")
+model = PPO.load("/home/lkd/Documents/GitHub/gym-pybullet-drones/ppo_cartpole5.zip")
 obs = env.reset()
 x=[]
 y=[]

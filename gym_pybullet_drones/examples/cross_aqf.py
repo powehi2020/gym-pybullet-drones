@@ -330,8 +330,8 @@ def run(
     trajectory_des1 = np.array(trajectory_des)
     trajectory_real1 = np.array(trajectory_real)
     
-    np.savetxt('ccsicc/trajectory_des_pd.txt',trajectory_des1,fmt='%0.8f')
-    np.savetxt('ccsicc/trajectory_real_pd.txt',trajectory_real1,fmt='%0.8f')
+    # np.savetxt('ccsicc/trajectory_des_pd.txt',trajectory_des1,fmt='%0.8f')
+    # np.savetxt('ccsicc/trajectory_real_pd.txt',trajectory_real1,fmt='%0.8f')
 
     time1 = [0.01*i for i in range(len(trajectory_des))]
     plt.subplot(4,1,1)
