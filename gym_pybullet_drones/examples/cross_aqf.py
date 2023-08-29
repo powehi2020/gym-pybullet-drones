@@ -23,6 +23,7 @@ from gym_pybullet_drones.control.SimplePIDControl import SimplePIDControl
 from scipy.spatial.transform import Rotation as R
 # from proplot import rc
 
+from stable_baselines3 import PPO
  
 def quaternion2euler(quaternion):
     r = R.from_quat(quaternion)
@@ -89,16 +90,17 @@ def Afq (posion):
     return -1*Afq
     # return [0,0]
 
-def Afqavoid (posion1,posion2,posion3,posion4):
+def Afqavoid (posion1,posion2,posion3,posion4,posion5):
     
     drones = np.array([
-                       posion1,posion2,posion3,posion4
+                       posion1,posion2,posion3,posion4,posion5
                        ])
 
     Afqformation = [0,0]
     Afqformation1 = [0,0]
     Afqformation2 = [0,0]
     Afqformation3 = [0,0]
+    Afqformation4 = [0,0]
     sigma4 = 1
     Ck = 0.1
 
@@ -139,8 +141,17 @@ def Afqavoid (posion1,posion2,posion3,posion4):
             V_34 = Ck*1/Afqformation_size3*np.exp(-np.square(Afqformation_size3)/2*np.square(sigma4))*Afqformation_vetor3
         
             Afqformation3 = Afqformation3 + V_34
+
+    for i in range(len(drones)):
+        if i != 4:
+            Afqformation_vetor4 =  posion5 - drones[i] 
+            Afqformation_size4 = np.linalg.norm(Afqformation_vetor4,ord=None)
+        
+            V_35 = Ck*1/Afqformation_size4*np.exp(-np.square(Afqformation_size4)/2*np.square(sigma4))*Afqformation_vetor4
+        
+            Afqformation4 = Afqformation4 + V_35
     
-    return -1*Afqformation,-1*Afqformation1,-1*Afqformation2,-1*Afqformation3
+    return -1*Afqformation,-1*Afqformation1,-1*Afqformation2,-1*Afqformation3,-1*Afqformation4
     # return [[0,0],[0,0],[0,0],[0,0]]
 
 def Afqformation (r,r_d):
@@ -164,11 +175,11 @@ def run(
         colab=DEFAULT_COLAB
     ):
     #### Initialize the simulation #############################
-    INIT_XYZS = np.array([[-3.0, 0.0, 0.5],[-5.0, 0.0, 0.5],[-4.0, 1.5, 0.5],[-4.0, -1.5, 0.5]])
+    INIT_XYZS = np.array([[-3.0, 0.0, 0.5],[-5.0, 0.0, 0.5],[-4.0, 1.5, 0.5],[-4.0, -1.5, 0.5],[-4.0, 0, 1]])
     # print(INIT_XYZS[0, 2],INIT_XYZS[1, 2],'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
     AGGR_PHY_STEPS = int(simulation_freq_hz/control_freq_hz) if aggregate else 1
     env = CtrlAviary(drone_model=drone,
-                     num_drones=4,
+                     num_drones=5,
                      initial_xyzs=INIT_XYZS,
                      physics=Physics.PYB_DW,
                      neighbourhood_radius=10,
@@ -203,7 +214,12 @@ def run(
     ctrl2 = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(1)]### 下方无人机的控制器
     ctrl3 = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(1)]
     ctrl4 = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(1)]
+    ctrl5 = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(1)]
     
+    ##### Load the trained RL model ####################################
+    model = PPO.load("ppo_cartpole4")
+    obs = env.reset()
+    act = {}
 
     #### Run the simulation ####################################
     CTRL_EVERY_N_STEPS = int(np.floor(env.SIM_FREQ/control_freq_hz))
@@ -215,6 +231,8 @@ def run(
         #### Step the simulation ###################################
         obs, reward, done, info = env.step(action)
         
+        for key, value in obs.items():
+            act[key] = model.predict(obs['0']['state'])
 
         #### Compute control at the desired frequency ##############
         if i%CTRL_EVERY_N_STEPS == 0:
@@ -224,7 +242,7 @@ def run(
             # INIT_XYZS = np.array([[-1, 0, 1],[-3, 0, 1],[-2.0, 1, 1],[-2.0, -1, 1]]) 
             j=j+1
             # print('jjjjjjjjjjjjjjjjjjjj:',i,CTRL_EVERY_N_STEPS)
-            A = Afqavoid ([0,0],[-2,0],[-1,1.5],[-1,-1.5])
+            A = Afqavoid ([0,0],[-2,0],[-1,1.5],[-1,-1.5],[-1,0])
             A1 = [[0,0]]
             Afq1 = Afq([obs[str(0)][str("state")][0],obs[str(0)][str("state")][1]])
              
@@ -242,7 +260,7 @@ def run(
                                                                 state=obs[str(0)]["state"],
                                                                 target_pos=target_pos1,
                                                                 target_vel=np.array([-Afq1[0]+A[0][0]+A1[0][0]+0.2,-Afq1[1]+A[0][1]+A1[0][1],0]),
-                                                                ude=None)    
+                                                                ude=act['0'])    
             Afq2 = Afq([obs[str(1)][str("state")][0],obs[str(1)][str("state")][1]])
             A2 = Afqformation([obs[str(1)][str("state")][0],obs[str(1)][str("state")][1]],[obs[str(0)][str("state")][0]-2,obs[str(0)][str("state")][1]])
             target_pos2 = [-5+1*(i/240),0.0,0.5]
@@ -252,7 +270,7 @@ def run(
                                                                 state=obs[str(1)]["state"],
                                                                 target_pos=target_pos2,
                                                                 target_vel=np.array([-Afq2[0]+A[1][0]+A2[0][0]+0.2,-Afq2[1]+A[1][1]+A2[0][1],0]),
-                                                                ude=None) 
+                                                                ude=act['1']) 
             Afq3 = Afq([obs[str(2)][str("state")][0],obs[str(2)][str("state")][1]])
             A3 = Afqformation([obs[str(2)][str("state")][0],obs[str(2)][str("state")][1]],[obs[str(0)][str("state")][0]-1,obs[str(0)][str("state")][1]+1.5])
             target_pos3 = [-4+1*(i/240),1.5,0.5]
@@ -261,7 +279,7 @@ def run(
                                                                 state=obs[str(2)]["state"],
                                                                 target_pos=target_pos3,
                                                                 target_vel=np.array([-Afq3[0]+A[2][0]+A3[0][0]+0.2,-Afq3[1]+A[2][1]+A3[0][1],0]),
-                                                                ude=None)
+                                                                ude=act['2'])
             
             Afq4 = Afq([obs[str(3)][str("state")][0],obs[str(3)][str("state")][1]])
             A4 = Afqformation([obs[str(3)][str("state")][0],obs[str(3)][str("state")][1]],[obs[str(0)][str("state")][0]-1,obs[str(0)][str("state")][1]-1.5])
@@ -271,28 +289,42 @@ def run(
                                                                 state=obs[str(3)]["state"],
                                                                 target_pos=target_pos4,
                                                                 target_vel=np.array([-Afq4[0]+A[3][0]+A4[0][0]+0.2,-Afq4[1]+A[3][1]+A4[0][1],0]),
-                                                                ude=None)
+                                                                ude=act['3'])
+            
+            Afq5 = Afq([obs[str(4)][str("state")][0],obs[str(4)][str("state")][1]])
+            A5 = Afqformation([obs[str(4)][str("state")][0],obs[str(4)][str("state")][1]],[obs[str(0)][str("state")][0]-1,obs[str(0)][str("state")][1]])
+            target_pos5 = [-4+1*(i/240),0,1]
+            # target_pos4 = [obs[str(3)][str("state")][0],obs[str(3)][str("state")][1],0.8]
+            action[str(4)], _, _ = ctrl5[0].computeControlFromState(control_timestep=CTRL_EVERY_N_STEPS*env.TIMESTEP,
+                                                                state=obs[str(4)]["state"],
+                                                                target_pos=target_pos5,
+                                                                target_vel=np.array([-Afq5[0]+A[4][0]+A5[0][0]+0.2,-Afq5[1]+A[4][1]+A5[0][1],0]),
+                                                                ude=act['4'])
             
             # trajectory_des.append(np.array([target_pos1[0],target_pos1[1],target_pos2[0],target_pos2[1],target_pos3[0],target_pos3[1],target_pos4[0],target_pos4[1]]))
             trajectory_des.append([obs[str(1)][str("state")][0]+2,obs[str(1)][str("state")][1],
                                    obs[str(0)][str("state")][0]-2,obs[str(0)][str("state")][1],
                                    obs[str(0)][str("state")][0]-1,obs[str(0)][str("state")][1]+1.5,
                                    obs[str(0)][str("state")][0]-1,obs[str(0)][str("state")][1]-1.5,
+                                   obs[str(0)][str("state")][0]-1,obs[str(0)][str("state")][1],
                                    target_pos1[2],target_pos2[2],target_pos3[2],target_pos4[2]
                                    ])
             trajectory_real.append([obs[str(0)][str("state")][0],obs[str(0)][str("state")][1],
                                     obs[str(1)][str("state")][0],obs[str(1)][str("state")][1],
                                     obs[str(2)][str("state")][0],obs[str(2)][str("state")][1],
                                     obs[str(3)][str("state")][0],obs[str(3)][str("state")][1],
+                                    obs[str(4)][str("state")][0],obs[str(4)][str("state")][1],
 
                                     obs[str(0)][str("state")][7],obs[str(0)][str("state")][8],obs[str(0)][str("state")][9],
                                     obs[str(1)][str("state")][7],obs[str(1)][str("state")][8],obs[str(1)][str("state")][9],
                                     obs[str(2)][str("state")][7],obs[str(2)][str("state")][8],obs[str(2)][str("state")][9],
                                     obs[str(3)][str("state")][7],obs[str(3)][str("state")][8],obs[str(3)][str("state")][9],
+                                    obs[str(4)][str("state")][7],obs[str(4)][str("state")][8],obs[str(4)][str("state")][9],
                                     obs[str(0)][str("state")][2],
                                     obs[str(1)][str("state")][2],
                                     obs[str(2)][str("state")][2],
-                                    obs[str(3)][str("state")][2]
+                                    obs[str(3)][str("state")][2],
+                                    obs[str(4)][str("state")][2]
                                     ])
             
             # print('pppp:',trajectory_real[i],obs[str(0)][str("state")][1])
@@ -341,6 +373,7 @@ def run(
     plt.plot(trajectory_real1[:,2],trajectory_real1[:,3],color='y',linestyle='-.',linewidth=1,label='UAV2')
     plt.plot(trajectory_real1[:,4],trajectory_real1[:,5],color='g',linestyle='-.',linewidth=1,label='UAV3')
     plt.plot(trajectory_real1[:,6],trajectory_real1[:,7],color='r',linestyle='-.',linewidth=1,label='UAV4')
+    plt.plot(trajectory_real1[:,8],trajectory_real1[:,9],color='c',linestyle='-.',linewidth=1,label='UAV5')
     
     
 
@@ -359,16 +392,19 @@ def run(
     plt.scatter(INIT_XYZS[:,0][1],INIT_XYZS[:,1][1],color='y',s=50)
     plt.scatter(INIT_XYZS[:,0][2],INIT_XYZS[:,1][2],color='g',s=50)
     plt.scatter(INIT_XYZS[:,0][3],INIT_XYZS[:,1][3],color='r',s=50)
+    plt.scatter(INIT_XYZS[:,0][4],INIT_XYZS[:,1][4],color='c',s=50)
 
     plt.scatter(XYZ[:,0][0],XYZ[:,1][0],color='b',s=50)
     plt.scatter(XYZ[:,0][1],XYZ[:,1][1],color='g',s=50)
     plt.scatter(XYZ[:,0][2],XYZ[:,1][2],color='y',s=50)
     plt.scatter(XYZ[:,0][3],XYZ[:,1][3],color='r',s=50)
+    plt.scatter(XYZ[:,0][4],XYZ[:,1][4],color='c',s=50)
 
     plt.scatter(XYZ1[:,0][0],XYZ1[:,1][0],color='b',s=50)
     plt.scatter(XYZ1[:,0][1],XYZ1[:,1][1],color='g',s=50)
     plt.scatter(XYZ1[:,0][2],XYZ1[:,1][2],color='y',s=50)
     plt.scatter(XYZ1[:,0][3],XYZ1[:,1][3],color='r',s=50)
+    plt.scatter(XYZ1[:,0][4],XYZ1[:,1][4],color='r',s=50)
 
 
     obstle = np.array([[-0,1.5],[-0,-1.5]])
