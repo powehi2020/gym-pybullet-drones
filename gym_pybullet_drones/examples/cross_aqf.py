@@ -23,6 +23,7 @@ from gym_pybullet_drones.control.SimplePIDControl import SimplePIDControl
 from scipy.spatial.transform import Rotation as R
 # from proplot import rc
 
+from stable_baselines3 import PPO
  
 def quaternion2euler(quaternion):
     r = R.from_quat(quaternion)
@@ -204,6 +205,10 @@ def run(
     ctrl3 = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(1)]
     ctrl4 = [DSLPIDControl(drone_model=DroneModel('cf2x')) for i in range(1)]
     
+    ##### Load the trained RL model ####################################
+    model = PPO.load("ppo_cartpole4")
+    obs = env.reset()
+    act = {}
 
     #### Run the simulation ####################################
     CTRL_EVERY_N_STEPS = int(np.floor(env.SIM_FREQ/control_freq_hz))
@@ -215,6 +220,8 @@ def run(
         #### Step the simulation ###################################
         obs, reward, done, info = env.step(action)
         
+        for key, value in obs.items():
+            act[key] = model.predict(obs['0']['state'])
 
         #### Compute control at the desired frequency ##############
         if i%CTRL_EVERY_N_STEPS == 0:
@@ -242,7 +249,7 @@ def run(
                                                                 state=obs[str(0)]["state"],
                                                                 target_pos=target_pos1,
                                                                 target_vel=np.array([-Afq1[0]+A[0][0]+A1[0][0]+0.2,-Afq1[1]+A[0][1]+A1[0][1],0]),
-                                                                ude=None)    
+                                                                ude=act['0'])    
             Afq2 = Afq([obs[str(1)][str("state")][0],obs[str(1)][str("state")][1]])
             A2 = Afqformation([obs[str(1)][str("state")][0],obs[str(1)][str("state")][1]],[obs[str(0)][str("state")][0]-2,obs[str(0)][str("state")][1]])
             target_pos2 = [-5+1*(i/240),0.0,0.5]
@@ -252,7 +259,7 @@ def run(
                                                                 state=obs[str(1)]["state"],
                                                                 target_pos=target_pos2,
                                                                 target_vel=np.array([-Afq2[0]+A[1][0]+A2[0][0]+0.2,-Afq2[1]+A[1][1]+A2[0][1],0]),
-                                                                ude=None) 
+                                                                ude=act['1']) 
             Afq3 = Afq([obs[str(2)][str("state")][0],obs[str(2)][str("state")][1]])
             A3 = Afqformation([obs[str(2)][str("state")][0],obs[str(2)][str("state")][1]],[obs[str(0)][str("state")][0]-1,obs[str(0)][str("state")][1]+1.5])
             target_pos3 = [-4+1*(i/240),1.5,0.5]
@@ -261,7 +268,7 @@ def run(
                                                                 state=obs[str(2)]["state"],
                                                                 target_pos=target_pos3,
                                                                 target_vel=np.array([-Afq3[0]+A[2][0]+A3[0][0]+0.2,-Afq3[1]+A[2][1]+A3[0][1],0]),
-                                                                ude=None)
+                                                                ude=act['2'])
             
             Afq4 = Afq([obs[str(3)][str("state")][0],obs[str(3)][str("state")][1]])
             A4 = Afqformation([obs[str(3)][str("state")][0],obs[str(3)][str("state")][1]],[obs[str(0)][str("state")][0]-1,obs[str(0)][str("state")][1]-1.5])
@@ -271,7 +278,7 @@ def run(
                                                                 state=obs[str(3)]["state"],
                                                                 target_pos=target_pos4,
                                                                 target_vel=np.array([-Afq4[0]+A[3][0]+A4[0][0]+0.2,-Afq4[1]+A[3][1]+A4[0][1],0]),
-                                                                ude=None)
+                                                                ude=act['3'])
             
             # trajectory_des.append(np.array([target_pos1[0],target_pos1[1],target_pos2[0],target_pos2[1],target_pos3[0],target_pos3[1],target_pos4[0],target_pos4[1]]))
             trajectory_des.append([obs[str(1)][str("state")][0]+2,obs[str(1)][str("state")][1],
