@@ -223,7 +223,7 @@ class DSLPIDControl(BaseControl):
 
         #### UDE target thrust #####################################
     
-        # A = self.get_action()
+        A = self.get_action()
         # T_ude = A[0]
         # print(A,"udeb")
         T_ude = 2
@@ -379,12 +379,16 @@ class DSLPIDControl(BaseControl):
         torque = kp_m*angle_acc_e + kd_m*angle_acc_de
     
         #### UDE design ####################################
-        # A = self.get_action()
+        A = self.get_action()
         # print(A[0],'udebb')
 
-        # T_torque_ude_1 = A[0]
-        # T_torque_ude_2 = A[1]
-        # T_torque_ude_3 = A[2]
+        # T_torque_ude_1 = A[3]
+        # T_torque_ude_2 = A[4]
+        # T_torque_ude_3 = A[5]
+
+        T_torque_ude_1 = 2
+        T_torque_ude_2 = 2
+        T_torque_ude_3 = 2
         
 
         # T_torque_ude = 2
@@ -417,7 +421,7 @@ class DSLPIDControl(BaseControl):
         # pwm is the motor control signal 
         pwm = thrust + np.dot(self.MIXER_MATRIX, target_torques)
         pwm = np.clip(pwm, self.MIN_PWM, self.MAX_PWM)
-        
+        print('pwm:',pwm)
         return self.PWM2RPM_SCALE * pwm + self.PWM2RPM_CONST
     
     ################################################################################

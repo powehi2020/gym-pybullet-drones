@@ -40,7 +40,7 @@ DEFAULT_AGGREGATE = True
 DEFAULT_OBSTACLES = True
 DEFAULT_SIMULATION_FREQ_HZ = 240
 DEFAULT_CONTROL_FREQ_HZ = 240
-DEFAULT_DURATION_SEC = 4
+DEFAULT_DURATION_SEC = 12
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
 
@@ -67,16 +67,19 @@ def run(
     NUM_WP = control_freq_hz*PERIOD
     TARGET_POS = np.zeros((NUM_WP,3))
     for i in range(NUM_WP):
-        TARGET_POS[i, :] = INIT_XYZ[0, 0], INIT_XYZ[0, 1], INIT_XYZ[0, 2] + 0.15 * (np.sin((i/NUM_WP)*(2*np.pi)) + 1)#地效
-        # TARGET_POS[i, :] = INIT_XYZ[0, 0], INIT_XYZ[0, 1], INIT_XYZ[0, 2]  + 0.7#悬停
+        # TARGET_POS[i, :] = INIT_XYZ[0, 0], INIT_XYZ[0,1], INIT_XYZ[0, 2] + 0.15 * (np.sin((i/NUM_WP)*(2*np.pi)))#地效
+        TARGET_POS[i, :] = INIT_XYZ[0, 0], INIT_XYZ[0, 1], INIT_XYZ[0, 2]  + 0.5*np.sin((i)*(0.2*np.pi))#悬停
+        # TARGET_POS[i, :] = INIT_XYZ[0, 0], INIT_XYZ[0, 0], INIT_XYZ[0, 0]  + 0.5 * (np.sin((i/NUM_WP)*(0.2*np.pi)))#悬停
+
+        print("test",TARGET_POS)
     wp_counter = 0
 
     #### Create the environment ################################
     env = CtrlAviary(drone_model=DroneModel.CF2X,
                      num_drones=1,
                      initial_xyzs=INIT_XYZ,
-                     physics=Physics.PYB_GND,
-                     # physics=Physics.PYB, # For comparison
+                    #  physics=Physics.PYB_GND,
+                     physics=Physics.PYB, # For comparison
                      neighbourhood_radius=10,
                      freq=simulation_freq_hz,
                      aggregate_phy_steps=AGGR_PHY_STEPS,
@@ -106,7 +109,7 @@ def run(
     for i in range(0, int(duration_sec*env.SIM_FREQ), AGGR_PHY_STEPS):
 
         #### Make it rain rubber ducks #############################
-        if i/env.SIM_FREQ>5 and i%10==0 and i/env.SIM_FREQ<10: p.loadURDF("duck_vhacd.urdf", [0+random.gauss(0, 0.3),-0.5+random.gauss(0, 0.3),3], p.getQuaternionFromEuler([random.randint(0,360),random.randint(0,360),random.randint(0,360)]), physicsClientId=PYB_CLIENT)
+        # if i/env.SIM_FREQ>5 and i%10==0 and i/env.SIM_FREQ<10: p.loadURDF("duck_vhacd.urdf", [0+random.gauss(0, 0.3),-0.5+random.gauss(0, 0.3),3], p.getQuaternionFromEuler([random.randint(0,360),random.randint(0,360),random.randint(0,360)]), physicsClientId=PYB_CLIENT)
 
         #### Step the simulation ###################################
         obs, reward, done, info = env.step(action)
