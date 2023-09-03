@@ -217,8 +217,9 @@ if __name__ == '__main__':
                       np.loadtxt("ICRA_data6.txt"),
                       np.loadtxt("ICRA_data7.txt"),
                       np.loadtxt("ICRA_data8.txt")))
+    data = np.vstack((data, data))
     env = RetrainEnv(data)
     model = RetrainPPO("MlpPolicy", env, data[:, 20:28], verbose=1, tensorboard_log="./ppo/")
-    model.learn(total_timesteps=2048)
+    model.learn(total_timesteps=4096)
     model.save("ppo_retrain")
     
